@@ -1,0 +1,170 @@
+// Prisma schema for multi-instrument trading journal
+// Config driven: instrument types can be extended via Instrument table
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  // shadowDatabaseUrl can be defined in .env for safer migrate dev if needed
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  image         String?
+  // For credentials auth (hashed with bcrypt). Null when user exclusively uses OAuth.
+  passwordHash  String?
+  role          UserRole  @default(USER)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  trades        Trade[]
+  journalSettings JournalSettings?
+  tradeTags     TradeTag[]
+  goals         Goal[]
+  riskBreachLogs RiskBreachLog[]
+}
+
+model Instrument {
+  id          String   @id @default(cuid())
+  symbol      String   @unique
+  name        String
+  category    String   // e.g. Futures, Forex, Crypto, Stock
+  currency    String
+  tickSize    Float
+  contractMultiplier Float? // for futures
+  isActive    Boolean  @default(true)
+  trades      Trade[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model TradeTag {
+  id        String   @id @default(cuid())
+  label     String
+  color     String   @default("#3b82f6")
+  user      User?    @relation(fields: [userId], references: [id])
+  userId    String?
+  trades    TradeTagOnTrade[]
+  createdAt DateTime @default(now())
+}
+
+model TradeTagOnTrade {
+  tradeId String
+  tagId   String
+  trade   Trade   @relation(fields: [tradeId], references: [id])
+  tag     TradeTag @relation(fields: [tagId], references: [id])
+  @@id([tradeId, tagId])
+}
+
+model Trade {
+  id          String      @id @default(cuid())
+  user        User        @relation(fields: [userId], references: [id])
+  userId      String
+  instrument  Instrument  @relation(fields: [instrumentId], references: [id])
+  instrumentId String
+  direction   TradeDirection
+  entryPrice  Float
+  exitPrice   Float?
+  quantity    Int         // lots / contracts / shares
+  leverage    Float?      // optional
+  entryAt     DateTime
+  exitAt      DateTime?
+  fees        Float       @default(0)
+  notes       String?
+  reason      String?     // reason for trade
+  lesson      String?     // what was learned
+  status      TradeStatus @default(OPEN)
+  tags        TradeTagOnTrade[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  deletedAt   DateTime?   // soft delete marker
+
+  @@index([userId, instrumentId, entryAt])
+  @@index([userId, deletedAt])
+}
+
+enum TradeDirection {
+  LONG
+  SHORT
+}
+
+enum TradeStatus {
+  OPEN
+  CLOSED
+  CANCELLED
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+model JournalSettings {
+  id             String   @id @default(cuid())
+  user           User     @relation(fields: [userId], references: [id])
+  userId         String   @unique
+  baseCurrency   String   @default("USD")
+  riskPerTradePct Float   @default(1)
+  maxDailyLossPct Float   @default(3)
+  initialEquity   Float   @default(100000) // starting equity baseline for risk % calculations
+  maxConsecutiveLossesThreshold Int @default(5)
+  timezone       String   @default("UTC")
+  theme          String   @default("dark") // ui theme preference (dark | light)
+  highContrast   Boolean  @default(false)   // user enabled high contrast adjustments
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+// Milestone 5: Goals (basic scaffold)
+model Goal {
+  id          String   @id @default(cuid())
+  user        User     @relation(fields: [userId], references: [id])
+  userId      String
+  type        GoalType
+  period      GoalPeriod // e.g. MONTHLY
+  targetValue Float
+  currentValue Float      @default(0)
+  startDate   DateTime
+  endDate     DateTime
+  achievedAt  DateTime?
+  // For rolling window goals (e.g., 7/30/90 day PnL) we store window length in days.
+  windowDays  Int?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  @@index([userId, period, endDate])
+}
+
+// Risk breach log (Milestone 5 expansion)
+model RiskBreachLog {
+  id        String   @id @default(cuid())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  type      String   // DAILY_LOSS, MAX_CONSECUTIVE_LOSSES, etc.
+  message   String
+  value     Float
+  limit     Float
+  createdAt DateTime @default(now())
+  @@index([userId, createdAt])
+}
+
+enum GoalType {
+  TOTAL_PNL
+  TRADE_COUNT
+  WIN_RATE
+  PROFIT_FACTOR
+  EXPECTANCY
+  AVG_LOSS_CAP
+  DAILY_GREEN_STREAK
+  ROLLING_30D_PNL
+  ROLLING_WINDOW_PNL
+}
+
+enum GoalPeriod {
+  MONTH
+  QUARTER
+  YEAR
+}

@@ -1,0 +1,433 @@
+openapi: 3.1.0
+info:
+  title: Trading Journal API (Scaffold)
+  version: 0.1.0
+  description: Initial scaffold for future expansion. Endpoints marked 'planned' are not yet implemented.
+servers:
+  - url: https://localhost:3000
+paths:
+  /api/trades:
+    get:
+      summary: List trades
+      parameters:
+        - in: query
+          name: instrumentId
+          schema: { type: string }
+        - in: query
+          name: tagId
+          description: Repeatable tag filter (can appear multiple times)
+          schema: { type: string }
+        - in: query
+          name: direction
+          schema: { type: string, enum: [LONG, SHORT] }
+        - in: query
+          name: status
+          schema: { type: string, enum: [OPEN, CLOSED, CANCELLED] }
+        - in: query
+          name: dateFrom
+          schema: { type: string, format: date-time }
+        - in: query
+          name: dateTo
+          schema: { type: string, format: date-time }
+        - in: query
+          name: cursor
+          schema: { type: string }
+        - in: query
+          name: q
+          description: Free text search (notes, reason, lesson)
+          schema: { type: string }
+      responses:
+        '200':
+          description: Trade list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      items:
+                        type: array
+                        items: { $ref: '#/components/schemas/Trade' }
+                      nextCursor: { type: string, nullable: true }
+                  error: { nullable: true }
+    post:
+      summary: Create trade
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TradeCreate'
+      responses:
+        '201':
+          description: Created trade
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TradeResponse'
+  /api/trades/{id}:
+    get:
+      summary: Get trade by id
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Trade
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TradeResponse' }
+    patch:
+      summary: Update trade
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TradeUpdate' }
+      responses:
+        '200':
+          description: Updated trade
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TradeResponse' }
+    delete:
+      summary: Soft delete trade (marks deletedAt, sets status CANCELLED)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        '204': { description: Soft deleted }
+  /api/trades/{id}/restore:
+    post:
+      summary: Restore previously soft-deleted trade
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: Restored }
+        '404': { description: Not found }
+  /api/instruments:
+    get:
+      summary: List instruments
+      responses:
+        '200':
+          description: Instruments
+    post:
+      summary: Create instrument (admin)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [symbol, name]
+              properties:
+                symbol: { type: string }
+                name: { type: string }
+                category: { type: string }
+                currency: { type: string }
+                tickSize: { type: number }
+                contractMultiplier: { type: number }
+      responses:
+        '201': { description: Created }
+        '403': { description: Forbidden }
+  /api/instruments/{id}/archive:
+    post:
+      summary: Archive instrument (admin)
+      responses:
+        '200': { description: Archived }
+        '403': { description: Forbidden }
+  /api/tags:
+    get:
+      summary: List tags
+      responses:
+        '200': { description: Tags }
+    post:
+      summary: Create tag
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [label]
+              properties:
+                label: { type: string }
+                color: { type: string }
+      responses:
+        '201': { description: Created }
+  /api/settings:
+    get:
+      summary: Get journal settings
+      responses:
+        '200': { description: Settings }
+    patch:
+      summary: Update journal settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                riskPerTradePct: { type: number }
+                maxDailyLossPct: { type: number }
+                baseCurrency: { type: string }
+      responses:
+        '200': { description: Updated }
+  /api/analytics/equity:
+    get:
+      summary: Equity curve points
+      responses:
+        '200':
+          description: Equity points (ordered by time)
+  /api/analytics/summary:
+    get:
+      summary: Performance summary metrics
+      responses:
+        '200':
+          description: Summary metrics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      winRate: { type: number }
+                      avgWin: { type: number }
+                      avgLoss: { type: number }
+                      expectancy: { type: number }
+                      profitFactor: { type: number, nullable: true }
+                      currentConsecutiveLosses: { type: number }
+                      maxConsecutiveLosses: { type: number }
+                  error: { nullable: true }
+  /api/analytics/tag-performance:
+    get:
+      summary: Per-tag realized P/L metrics for closed trades
+      responses:
+        '200':
+          description: Tag performance list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      tags:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            tagId: { type: string }
+                            label: { type: string }
+                            color: { type: string }
+                            trades: { type: number }
+                            wins: { type: number }
+                            losses: { type: number }
+                            winRate: { type: number }
+                            sumPnl: { type: number }
+                            avgPnl: { type: number }
+  /api/analytics/daily:
+    get:
+      summary: Daily realized P/L aggregated by exit date
+      parameters:
+        - in: query
+          name: days
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 180
+          description: Lookback window in days (default 60, max 180)
+      responses:
+        '200':
+          description: Daily P/L points
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      days:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            date: { type: string, format: date }
+                            pnl: { type: number }
+                  error: { nullable: true }
+  /api/analytics/monthly:
+    get:
+      summary: Monthly realized P/L aggregated by calendar month
+      parameters:
+        - in: query
+          name: months
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 36
+          description: Lookback window in months (default 12, max 36)
+      responses:
+        '200':
+          description: Monthly P/L points
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      months:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            month: { type: string, pattern: "^\\d{4}-\\d{2}$" }
+                            pnl: { type: number }
+                  error: { nullable: true }
+  /api/analytics/distribution:
+    get:
+      summary: Win/loss/breakeven counts and PnL histogram
+      responses:
+        '200':
+          description: Distribution metrics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      wins: { type: number }
+                      losses: { type: number }
+                      breakeven: { type: number }
+                      winRate: { type: number }
+                      buckets:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            from: { type: number }
+                            to: { type: number }
+                            count: { type: number }
+                  error: { nullable: true }
+  /api/analytics/drawdown:
+    get:
+      summary: Equity curve drawdown statistics
+      responses:
+        '200':
+          description: Drawdown stats
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      maxDrawdown: { type: number }
+                      maxDrawdownPct: { type: number, description: 'Percent decline from peak' }
+                      peakTime: { type: string, nullable: true }
+                      troughTime: { type: string, nullable: true }
+                      troughEquity: { type: number }
+                      timeline:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            equity: { type: number }
+                            peak: { type: number }
+                            dd: { type: number }
+                            time: { type: string }
+                            tradeId: { type: string }
+                  error: { nullable: true }
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      points:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            time: { type: string, format: date-time }
+                            equity: { type: number }
+                            tradeId: { type: string }
+                            pnl: { type: number }
+                  error: { nullable: true }
+components:
+  schemas:
+    Trade:
+      type: object
+      properties:
+        id: { type: string }
+        userId: { type: string }
+        instrumentId: { type: string }
+        direction: { type: string, enum: [LONG, SHORT] }
+        entryPrice: { type: number }
+        exitPrice: { type: number, nullable: true }
+        quantity: { type: integer }
+        leverage: { type: number, nullable: true }
+        entryAt: { type: string, format: date-time }
+        exitAt: { type: string, format: date-time, nullable: true }
+        fees: { type: number }
+        notes: { type: string, nullable: true }
+        reason: { type: string, nullable: true }
+        lesson: { type: string, nullable: true }
+        status: { type: string, enum: [OPEN, CLOSED, CANCELLED] }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+  realizedPnl: { type: number, nullable: true }
+    TradeCreate:
+      type: object
+      required: [instrumentId, direction, entryPrice, quantity, entryAt]
+      properties:
+        instrumentId: { type: string }
+        direction: { type: string, enum: [LONG, SHORT] }
+        entryPrice: { type: number, minimum: 0 }
+        quantity: { type: integer, minimum: 1 }
+        leverage: { type: number, nullable: true }
+        entryAt: { type: string, format: date-time }
+        fees: { type: number, default: 0 }
+        notes: { type: string }
+        reason: { type: string }
+        tags: { type: array, items: { type: string }, description: "Tag IDs" }
+    TradeUpdate:
+      type: object
+      properties:
+        exitPrice: { type: number }
+        exitAt: { type: string, format: date-time }
+        notes: { type: string }
+        reason: { type: string }
+        lesson: { type: string }
+        status: { type: string, enum: [OPEN, CLOSED, CANCELLED] }
+        tags: { type: array, items: { type: string } }
+    TradeResponse:
+      type: object
+      properties:
+        data: { $ref: '#/components/schemas/Trade' }
+        error: { nullable: true }

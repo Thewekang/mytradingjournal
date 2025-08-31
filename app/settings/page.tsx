@@ -1,0 +1,92 @@
+import { requireUser } from '@/lib/auth';
+import React from 'react';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { useToast } from '@/components/toast-provider';
+
+async function getSettings() {
+  const base = process.env.NEXT_PUBLIC_BASE_URL || '';
+  const res = await fetch(`${base}/api/settings`, { cache: 'no-store' });
+  if (!res.ok) return null;
+  const json = await res.json();
+  return json.data;
+}
+
+export default async function SettingsPage() {
+  const user = await requireUser();
+  if (!user) return <div className="p-6 text-center">Please sign in.</div>;
+  const settings = await getSettings();
+  return <SettingsClient initial={settings} />;
+}
+
+function SettingsClient({ initial }: { initial: any }) {
+  const [form, setForm] = React.useState({
+    baseCurrency: initial?.baseCurrency || 'USD',
+    riskPerTradePct: initial?.riskPerTradePct?.toString() || '1',
+    maxDailyLossPct: initial?.maxDailyLossPct?.toString() || '3',
+    initialEquity: initial?.initialEquity?.toString() || '100000',
+    maxConsecutiveLossesThreshold: initial?.maxConsecutiveLossesThreshold?.toString() || '5',
+    timezone: initial?.timezone || 'UTC'
+  });
+  const [saving, setSaving] = React.useState(false);
+  const [msg, setMsg] = React.useState<string|null>(null);
+  const [err, setErr] = React.useState<string|null>(null);
+  const [errors, setErrors] = React.useState<Record<string,string>>({});
+  const toast = useToast();
+
+  function validate() {
+    const e: Record<string,string> = {};
+    const numFields = ['riskPerTradePct','maxDailyLossPct','initialEquity','maxConsecutiveLossesThreshold'] as const;
+    numFields.forEach(f => { const v = Number((form as any)[f]); if (isNaN(v) || v < 0) e[f] = 'Must be a positive number'; });
+    setErrors(e); return Object.keys(e).length === 0;
+  }
+  async function save(e: React.FormEvent) {
+    e.preventDefault();
+    if (!validate()) return;
+    setSaving(true); setMsg(null); setErr(null);
+    try {
+      const payload: any = { ...form };
+      ['riskPerTradePct','maxDailyLossPct','initialEquity','maxConsecutiveLossesThreshold'].forEach(k => payload[k] = Number((payload as any)[k]));
+      const res = await fetch('/api/settings', { method: 'PATCH', headers: { 'Content-Type':'application/json' }, body: JSON.stringify(payload) });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error?.message || 'Save failed');
+      setMsg('Saved');
+      toast.push({ variant: 'success', heading: 'Settings Saved', description: 'Your settings have been updated.' });
+    } catch (e: any) { setErr(e.message); toast.push({ variant: 'danger', heading: 'Save Failed', description: e.message }); }
+    finally { setSaving(false); }
+  }
+
+  function field<K extends keyof typeof form>(name: K, label: string, type: string = 'text', step?: string) {
+    const id = `field-${name}`;
+    const errMsg = errors[name as string];
+    return (
+      <label className="flex flex-col text-xs gap-1" key={name} htmlFor={id}>
+        <span className="font-medium">{label}</span>
+  <input id={id} aria-invalid={!!errMsg} aria-describedby={errMsg ? id+'-err' : undefined} type={type} step={step} className="bg-neutral-800 rounded px-2 py-1 text-sm focus-ring" value={(form as any)[name]} onChange={e=>setForm(f=>({...f, [name]: e.target.value}))} />
+        {errMsg && <span id={id+'-err'} className="text-[10px] text-red-400">{errMsg}</span>}
+      </label>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <h1 className="text-xl font-semibold">Settings</h1>
+      <Card className="p-4">
+      <form onSubmit={save} className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 text-xs">
+        {field('baseCurrency','Base Currency')}
+        {field('timezone','Timezone')}
+        {field('riskPerTradePct','Risk % Per Trade','number','0.01')}
+        {field('maxDailyLossPct','Max Daily Loss %','number','0.01')}
+        {field('initialEquity','Initial Equity','number','1')}
+        {field('maxConsecutiveLossesThreshold','Max Loss Streak','number','1')}
+        <div className="md:col-span-2 lg:col-span-3 flex items-center gap-3 pt-2">
+          <Button size="sm" variant="solid" disabled={saving} loading={saving}>{saving ? 'Saving...' : 'Save'}</Button>
+          {msg && <span className="text-green-400">{msg}</span>}
+          {err && <span className="text-red-400">{err}</span>}
+        </div>
+      </form>
+      </Card>
+      <p className="text-[10px] text-neutral-500">Risk metrics use Initial Equity as baseline (dynamic equity implemented).</p>
+    </div>
+  );
+}
