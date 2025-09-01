@@ -33,7 +33,7 @@ export async function listGoals(userId: string) {
 export async function updateGoal(userId: string, id: string, input: GoalUpdateInput) {
   const goal = await prisma.goal.findFirst({ where: { id, userId } });
   if (!goal) return null;
-  const data: any = {};
+  const data: { targetValue?: number; currentValue?: number; achievedAt?: Date | null } = {};
   if (input.targetValue !== undefined) data.targetValue = input.targetValue;
   if (input.currentValue !== undefined) data.currentValue = input.currentValue;
   if (input.achievedAt !== undefined) data.achievedAt = input.achievedAt ? new Date(input.achievedAt) : null;

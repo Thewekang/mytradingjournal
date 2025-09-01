@@ -1,26 +1,25 @@
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth-options';
+import { getSessionUser } from '@/lib/session';
 import { prisma } from '@/lib/prisma';
 import { unauthorized, internal } from '@/lib/errors';
 import { computeRealizedPnl } from '@/lib/services/trade-service';
 import { getAnalyticsCache, setAnalyticsCache } from '@/lib/analytics-cache';
+import { withLogging, jsonError, jsonOk } from '@/lib/api/logger-wrapper';
 
 // Provides win/loss/breakeven counts and a simple PnL histogram for closed trades
-export async function GET() {
-  const session = await getServerSession(authOptions);
-  const userId = (session?.user as any)?.id as string | undefined;
-  if (!userId) return new Response(JSON.stringify({ data: null, error: unauthorized() }), { status: 401 });
+async function _GET() {
+  const user = await getSessionUser();
+  if (!user) return new Response(JSON.stringify({ data: null, error: unauthorized() }), { status: 401 });
   try {
-  const cached = getAnalyticsCache(userId, 'distribution');
+  const cached = getAnalyticsCache(user.id, 'distribution');
   if (cached) return new Response(JSON.stringify({ data: cached, error: null }), { status: 200 });
   const trades = await prisma.trade.findMany({
-      where: { userId, status: 'CLOSED', deletedAt: null, exitAt: { not: null } },
+      where: { userId: user.id, status: 'CLOSED', deletedAt: null, exitAt: { not: null } },
       include: { instrument: { select: { contractMultiplier: true } } }
     });
     const pnls: number[] = [];
     let wins = 0, losses = 0, breakeven = 0;
     for (const t of trades) {
-      const pnl = computeRealizedPnl({ entryPrice: t.entryPrice, exitPrice: t.exitPrice ?? undefined, quantity: t.quantity, direction: t.direction, fees: t.fees, contractMultiplier: (t as any).instrument?.contractMultiplier });
+  const pnl = computeRealizedPnl({ entryPrice: t.entryPrice, exitPrice: t.exitPrice ?? undefined, quantity: t.quantity, direction: t.direction, fees: t.fees, contractMultiplier: t.instrument?.contractMultiplier ?? undefined });
       if (pnl == null) continue;
       pnls.push(pnl);
       if (Math.abs(pnl) < 1e-8) breakeven++; else if (pnl > 0) wins++; else losses++;
@@ -46,10 +45,10 @@ export async function GET() {
       }
     }
   const payload = { wins, losses, breakeven, winRate, buckets };
-  setAnalyticsCache(userId, 'distribution', payload, 30_000);
-  return new Response(JSON.stringify({ data: payload, error: null }), { status: 200 });
-  } catch (e) {
-    console.error(e);
-    return new Response(JSON.stringify({ data: null, error: internal() }), { status: 500 });
+  setAnalyticsCache(user.id, 'distribution', payload, 30_000);
+  return jsonOk(payload);
+  } catch {
+    return jsonError(internal(), 500);
   }
 }
+export const GET = withLogging(_GET, 'GET /api/analytics/distribution');

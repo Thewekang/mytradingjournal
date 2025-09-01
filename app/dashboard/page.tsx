@@ -10,58 +10,66 @@ async function fetchSummary() {
   return (await res.json()).data;
 }
 
-async function fetchEquity() {
+interface EquityPointApi { date: string; equity: number }
+async function fetchEquity(): Promise<EquityPointApi[]> {
   const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || ''}/api/analytics/equity`, { cache: 'no-store' });
-  if (!res.ok) return [] as any[];
+  if (!res.ok) return [];
   const json = await res.json();
   return json.data?.points || [];
 }
 
-async function fetchDaily() {
+interface DailyDay { date: string; pnl: number }
+async function fetchDaily(): Promise<DailyDay[]> {
   const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || ''}/api/analytics/daily?days=60`, { cache: 'no-store' });
-  if (!res.ok) return [] as any[];
+  if (!res.ok) return [];
   const json = await res.json();
   return json.data?.days || [];
 }
 
-async function fetchMonthly() {
+interface MonthlyRow { month: string; pnl: number }
+async function fetchMonthly(): Promise<MonthlyRow[]> {
   const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || ''}/api/analytics/monthly?months=12`, { cache: 'no-store' });
-  if (!res.ok) return [] as any[];
+  if (!res.ok) return [];
   const json = await res.json();
   return json.data?.months || [];
 }
 
-async function fetchDistribution() {
+interface Distribution { wins: number; losses: number; breakeven: number; winRate: number }
+async function fetchDistribution(): Promise<Distribution | null> {
   const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || ''}/api/analytics/distribution`, { cache: 'no-store' });
-  if (!res.ok) return null as any;
+  if (!res.ok) return null;
   const json = await res.json();
   return json.data;
 }
 
-async function fetchDrawdown() {
+interface Drawdown { maxDrawdown: number }
+async function fetchDrawdown(): Promise<Drawdown | null> {
   const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || ''}/api/analytics/drawdown`, { cache: 'no-store' });
-  if (!res.ok) return null as any;
+  if (!res.ok) return null;
   const json = await res.json();
   return json.data;
 }
 
-async function fetchTagPerformance() {
+interface TagPerf { tagId: string; label: string; color: string; trades: number; wins: number; losses: number; winRate: number; sumPnl: number; avgPnl: number }
+async function fetchTagPerformance(): Promise<TagPerf[]> {
   const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || ''}/api/analytics/tag-performance`, { cache: 'no-store' });
-  if (!res.ok) return [] as any[];
+  if (!res.ok) return [];
   const json = await res.json();
   return json.data?.tags || [];
 }
 
-async function fetchGoals() {
+interface GoalRow { id: string; type: string; period: string; targetValue: number; currentValue: number; achievedAt: string | null }
+async function fetchGoals(): Promise<GoalRow[]> {
   const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || ''}/api/goals`, { cache: 'no-store' });
-  if (!res.ok) return [] as any[];
+  if (!res.ok) return [];
   const json = await res.json();
   return json.data || [];
 }
 
-async function fetchRiskBreaches() {
+interface RiskBreach { id: string; type: string; message: string; value: number; limit: number; createdAt: string }
+async function fetchRiskBreaches(): Promise<RiskBreach[]> {
   const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || ''}/api/risk/breaches`, { cache: 'no-store' });
-  if (!res.ok) return [] as any[];
+  if (!res.ok) return [];
   const json = await res.json();
   return json.data || [];
 }
@@ -69,7 +77,9 @@ async function fetchRiskBreaches() {
 export default async function DashboardPage() {
   const user = await requireUser();
   if (!user) return <div className="p-8 text-center">Sign in required.</div>;
-  const [points, summary, daily, monthly, distribution, drawdown, tagPerf, goals, breaches] = await Promise.all([fetchEquity(), fetchSummary(), fetchDaily(), fetchMonthly(), fetchDistribution(), fetchDrawdown(), fetchTagPerformance(), fetchGoals(), fetchRiskBreaches()]);
+  const [equityRaw, summary, daily, monthly, distribution, drawdown, tagPerf, goals, breaches] = await Promise.all([fetchEquity(), fetchSummary(), fetchDaily(), fetchMonthly(), fetchDistribution(), fetchDrawdown(), fetchTagPerformance(), fetchGoals(), fetchRiskBreaches()]);
+  // Adapt to chart's EquityPoint { time, equity, pnl, tradeId }
+  const points = equityRaw.map(p => ({ time: p.date, equity: p.equity, pnl: 0, tradeId: '' }));
   const totalPnl = points.length ? points[points.length - 1].equity : 0;
   return (
     <div className="space-y-8">
@@ -83,21 +93,21 @@ export default async function DashboardPage() {
   <MetricCard label="Loss Streak (Cur/Max)" tooltip="Current and historical maximum consecutive losing trades." value={summary ? `${summary.currentConsecutiveLosses}/${summary.maxConsecutiveLosses}` : '-'} />
       </div>
       <section aria-labelledby="goals-heading" className="mt-4">
-        <h2 id="goals-heading" className="text-sm font-semibold text-neutral-300 mb-2">Active Goals</h2>
-        {goals.length === 0 && <p className="text-xs text-neutral-500">No active goals. Create one via API (UI form pending).</p>}
+  <h2 id="goals-heading" className="text-sm font-semibold text-[var(--color-text)]/80 mb-2">Active Goals</h2>
+  {goals.length === 0 && <p className="text-xs text-[var(--color-muted)]">No active goals. Create one via API (UI form pending).</p>}
         <div className="space-y-2">
-          {goals.map((g: any) => {
+          {goals.map((g: GoalRow) => {
             const pct = g.targetValue > 0 ? Math.min(100, (g.currentValue / g.targetValue) * 100) : 0;
             const achieved = g.achievedAt != null;
             const label = g.type === 'TOTAL_PNL' ? 'Total P/L' : g.type === 'TRADE_COUNT' ? 'Trade Count' : 'Win Rate %';
             return (
               <div key={g.id} className="rounded p-2 bg-[var(--color-bg-muted)] border border-[var(--color-border-strong)]">
                 <div className="flex justify-between text-[11px] mb-1">
-                  <span className="text-neutral-300">{label} ({g.period})</span>
-                  <span className="text-neutral-400">{g.currentValue.toFixed(2)} / {g.targetValue}</span>
+                  <span className="text-[var(--color-text)]/80">{label} ({g.period})</span>
+                  <span className="text-[var(--color-muted)]">{g.currentValue.toFixed(2)} / {g.targetValue}</span>
                 </div>
                 <div
-                  className="h-2 rounded bg-neutral-800 overflow-hidden"
+                  className="h-2 rounded bg-[var(--color-bg-inset)] overflow-hidden"
                   role="progressbar"
                   aria-valuenow={+pct.toFixed(1)}
                   aria-valuemin={0}
@@ -114,17 +124,17 @@ export default async function DashboardPage() {
         </div>
       </section>
       <section aria-labelledby="risk-heading">
-        <h2 id="risk-heading" className="text-sm font-semibold text-neutral-300 mb-2">Risk Breaches (Today)</h2>
-        {breaches.length === 0 && <p className="text-xs text-neutral-500">No breaches logged today.</p>}
+  <h2 id="risk-heading" className="text-sm font-semibold text-[var(--color-text)]/80 mb-2">Risk Breaches (Today)</h2>
+  {breaches.length === 0 && <p className="text-xs text-[var(--color-muted)]">No breaches logged today.</p>}
         <ul className="space-y-2">
-          {breaches.map((b: any) => (
+          {breaches.map((b: RiskBreach) => (
             <li key={b.id} className="rounded p-2 text-[11px] bg-[var(--color-bg-muted)] border border-[var(--color-border-strong)]">
               <div className="flex justify-between">
                 <span className="font-medium text-red-400">{b.type}</span>
-                <time className="text-neutral-500" dateTime={b.createdAt}>{new Date(b.createdAt).toLocaleTimeString()}</time>
+                <time className="text-[var(--color-muted)]" dateTime={b.createdAt}>{new Date(b.createdAt).toLocaleTimeString()}</time>
               </div>
-              <p className="text-neutral-300 mt-1">{b.message}</p>
-              <p className="text-neutral-500 mt-1">Value: {b.value.toFixed(2)} / Limit: {b.limit}</p>
+              <p className="text-[var(--color-text)]/80 mt-1">{b.message}</p>
+              <p className="text-[var(--color-muted)] mt-1">Value: {b.value.toFixed(2)} / Limit: {b.limit}</p>
             </li>
           ))}
         </ul>
@@ -133,14 +143,14 @@ export default async function DashboardPage() {
         <h2 className="text-sm font-semibold mb-2">Equity Curve</h2>
   <div className="rounded-lg p-4 bg-[var(--color-bg-muted)] border border-[var(--color-border)]">
           <EquityCurve points={points} />
-          {!points.length && <p className="text-xs text-neutral-500 mt-2">No closed trades yet.</p>}
+          {!points.length && <p className="text-xs text-[var(--color-muted)] mt-2">No closed trades yet.</p>}
         </div>
       </section>
       <section>
         <h2 className="text-sm font-semibold mb-2">Monthly Performance (Last 12 Months)</h2>
   <div className="rounded-lg p-4 bg-[var(--color-bg-muted)] border border-[var(--color-border)]">
           <MonthlyBars data={monthly} />
-          {!monthly.length && <p className="text-xs text-neutral-500 mt-2">No closed trades in range.</p>}
+          {!monthly.length && <p className="text-xs text-[var(--color-muted)] mt-2">No closed trades in range.</p>}
         </div>
       </section>
       <section>
@@ -148,10 +158,10 @@ export default async function DashboardPage() {
   <div className="rounded-lg p-4 flex flex-col sm:flex-row gap-4 bg-[var(--color-bg-muted)] border border-[var(--color-border)]">
           <div className="flex-1 min-w-[200px]"><WinLossDonut wins={distribution?.wins||0} losses={distribution?.losses||0} breakeven={distribution?.breakeven||0} /></div>
           <ul className="text-xs space-y-1">
-            <li><span className="text-neutral-400">Wins:</span> {distribution?.wins ?? 0}</li>
-            <li><span className="text-neutral-400">Losses:</span> {distribution?.losses ?? 0}</li>
-            <li><span className="text-neutral-400">Breakeven:</span> {distribution?.breakeven ?? 0}</li>
-            <li><span className="text-neutral-400">Win Rate:</span> {distribution ? (distribution.winRate * 100).toFixed(1)+'%' : '-'}</li>
+            <li><span className="text-[var(--color-muted)]">Wins:</span> {distribution?.wins ?? 0}</li>
+            <li><span className="text-[var(--color-muted)]">Losses:</span> {distribution?.losses ?? 0}</li>
+            <li><span className="text-[var(--color-muted)]">Breakeven:</span> {distribution?.breakeven ?? 0}</li>
+            <li><span className="text-[var(--color-muted)]">Win Rate:</span> {distribution ? (distribution.winRate * 100).toFixed(1)+'%' : '-'}</li>
           </ul>
         </div>
       </section>
@@ -159,14 +169,14 @@ export default async function DashboardPage() {
         <h2 className="text-sm font-semibold mb-2">Daily P/L (Last 60 Days)</h2>
   <div className="rounded-lg p-4 overflow-x-auto bg-[var(--color-bg-muted)] border border-[var(--color-border)]">
           <DailyHeatmap days={daily} />
-          {!daily.length && <p className="text-xs text-neutral-500 mt-2">No closed trades in range.</p>}
+          {!daily.length && <p className="text-xs text-[var(--color-muted)] mt-2">No closed trades in range.</p>}
         </div>
       </section>
       <section>
         <h2 className="text-sm font-semibold mb-2">Tag Performance</h2>
   <div className="rounded-lg p-4 overflow-x-auto bg-[var(--color-bg-muted)] border border-[var(--color-border)]">
           <TagPerformanceTable rows={tagPerf} />
-          {!tagPerf.length && <p className="text-xs text-neutral-500 mt-2">No tagged closed trades.</p>}
+          {!tagPerf.length && <p className="text-xs text-[var(--color-muted)] mt-2">No tagged closed trades.</p>}
         </div>
       </section>
     </div>
@@ -182,7 +192,7 @@ function MetricCard({ label, value, tone, tooltip }: { label: string; value: str
   ) : label;
   return (
     <div className="rounded-lg p-4 flex flex-col gap-2 bg-[var(--color-bg-muted)] border border-[var(--color-border)]">
-      <div className="text-xs uppercase tracking-wide text-neutral-400">{LabelEl}</div>
+  <div className="text-xs uppercase tracking-wide text-[var(--color-muted)]">{LabelEl}</div>
       <div className={`text-2xl font-semibold ${color}`}>{value}</div>
     </div>
   );
@@ -192,7 +202,7 @@ function TagPerformanceTable({ rows }: { rows: { tagId: string; label: string; c
   if (!rows?.length) return null;
   return (
     <table className="w-full text-xs">
-      <thead className="text-neutral-400 text-[10px] uppercase">
+  <thead className="text-[var(--color-muted)] text-[10px] uppercase">
         <tr className="text-left">
           <th className="py-1 pr-2 font-medium">Tag</th>
           <th className="py-1 pr-2 font-medium">Trades</th>
@@ -205,7 +215,7 @@ function TagPerformanceTable({ rows }: { rows: { tagId: string; label: string; c
         {rows.map(r => {
           const tone = r.sumPnl > 0 ? 'text-green-400' : r.sumPnl < 0 ? 'text-red-400' : '';
           return (
-            <tr key={r.tagId} className="border-t border-neutral-800">
+            <tr key={r.tagId} className="border-t border-[var(--color-border)]">
               <td className="py-1 pr-2"><span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-sm" style={{ background: r.color }}></span>{r.label}</span></td>
               <td className="py-1 pr-2">{r.trades}</td>
               <td className="py-1 pr-2">{(r.winRate*100).toFixed(0)}%</td>

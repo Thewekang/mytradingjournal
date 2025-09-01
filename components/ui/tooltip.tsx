@@ -63,21 +63,30 @@ export function Tooltip({ content, delay = 250, id, placement = 'top', children 
     el.style.left = `${Math.max(4, left)}px`;
   }, [visible, placement]);
 
-  const childEl = children as React.ReactElement<any>;
-  const prevProps = childEl.props || {};
+  const childEl = children as React.ReactElement<Record<string, unknown>>;
+  type HandlerProps = {
+    onMouseEnter?: (e: React.MouseEvent) => void;
+    onMouseLeave?: (e: React.MouseEvent) => void;
+    onFocus?: (e: React.FocusEvent) => void;
+    onBlur?: (e: React.FocusEvent) => void;
+    onKeyDown?: (e: React.KeyboardEvent) => void;
+    tabIndex?: number;
+    [k: string]: unknown;
+  };
+  const prevProps: HandlerProps = childEl.props || {} as HandlerProps;
   const trigger = React.cloneElement(childEl, {
     ref: (node: HTMLElement) => {
       triggerRef.current = node;
-      const anyChild: any = childEl;
+      const anyChild = childEl as unknown as { ref?: React.Ref<HTMLElement> };
       const childRef = anyChild.ref;
       if (typeof childRef === 'function') childRef(node);
-      else if (childRef && typeof childRef === 'object') (childRef as React.MutableRefObject<any>).current = node;
+      else if (childRef && typeof childRef === 'object') (childRef as React.MutableRefObject<HTMLElement | null>).current = node;
     },
-    onMouseEnter: (e: any) => { prevProps.onMouseEnter?.(e); show(); },
-    onMouseLeave: (e: any) => { prevProps.onMouseLeave?.(e); hide(); },
-    onFocus: (e: any) => { prevProps.onFocus?.(e); show(); },
-    onBlur: (e: any) => { prevProps.onBlur?.(e); hide(); },
-    onKeyDown: (e: any) => { prevProps.onKeyDown?.(e); handleKey(e); },
+    onMouseEnter: (e: React.MouseEvent) => { prevProps.onMouseEnter?.(e); show(); },
+    onMouseLeave: (e: React.MouseEvent) => { prevProps.onMouseLeave?.(e); hide(); },
+    onFocus: (e: React.FocusEvent) => { prevProps.onFocus?.(e); show(); },
+    onBlur: (e: React.FocusEvent) => { prevProps.onBlur?.(e); hide(); },
+    onKeyDown: (e: React.KeyboardEvent) => { prevProps.onKeyDown?.(e); handleKey(e); },
     'aria-describedby': visible ? tooltipId.current : undefined,
     tabIndex: prevProps.tabIndex ?? 0,
   });

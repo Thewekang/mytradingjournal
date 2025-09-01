@@ -2,6 +2,7 @@ import { requireUser } from '@/lib/auth';
 import React from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/toast-provider';
 
 async function getSettings() {
@@ -19,14 +20,15 @@ export default async function SettingsPage() {
   return <SettingsClient initial={settings} />;
 }
 
-function SettingsClient({ initial }: { initial: any }) {
+interface SettingsData { baseCurrency: string; riskPerTradePct: number; maxDailyLossPct: number; initialEquity: number; maxConsecutiveLossesThreshold: number; timezone: string }
+function SettingsClient({ initial }: { initial: SettingsData | null }) {
   const [form, setForm] = React.useState({
-    baseCurrency: initial?.baseCurrency || 'USD',
-    riskPerTradePct: initial?.riskPerTradePct?.toString() || '1',
-    maxDailyLossPct: initial?.maxDailyLossPct?.toString() || '3',
-    initialEquity: initial?.initialEquity?.toString() || '100000',
-    maxConsecutiveLossesThreshold: initial?.maxConsecutiveLossesThreshold?.toString() || '5',
-    timezone: initial?.timezone || 'UTC'
+    baseCurrency: initial?.baseCurrency ?? 'USD',
+    riskPerTradePct: (initial?.riskPerTradePct ?? 1).toString(),
+    maxDailyLossPct: (initial?.maxDailyLossPct ?? 3).toString(),
+    initialEquity: (initial?.initialEquity ?? 100000).toString(),
+    maxConsecutiveLossesThreshold: (initial?.maxConsecutiveLossesThreshold ?? 5).toString(),
+    timezone: initial?.timezone ?? 'UTC'
   });
   const [saving, setSaving] = React.useState(false);
   const [msg, setMsg] = React.useState<string|null>(null);
@@ -37,7 +39,7 @@ function SettingsClient({ initial }: { initial: any }) {
   function validate() {
     const e: Record<string,string> = {};
     const numFields = ['riskPerTradePct','maxDailyLossPct','initialEquity','maxConsecutiveLossesThreshold'] as const;
-    numFields.forEach(f => { const v = Number((form as any)[f]); if (isNaN(v) || v < 0) e[f] = 'Must be a positive number'; });
+  numFields.forEach(f => { const v = Number((form as Record<string,string>)[f]); if (isNaN(v) || v < 0) e[f] = 'Must be a positive number'; });
     setErrors(e); return Object.keys(e).length === 0;
   }
   async function save(e: React.FormEvent) {
@@ -45,14 +47,14 @@ function SettingsClient({ initial }: { initial: any }) {
     if (!validate()) return;
     setSaving(true); setMsg(null); setErr(null);
     try {
-      const payload: any = { ...form };
-      ['riskPerTradePct','maxDailyLossPct','initialEquity','maxConsecutiveLossesThreshold'].forEach(k => payload[k] = Number((payload as any)[k]));
+  const payload: Record<string, unknown> = { ...form };
+  (['riskPerTradePct','maxDailyLossPct','initialEquity','maxConsecutiveLossesThreshold'] as const).forEach(k => { payload[k] = Number((payload as Record<string,string>)[k]); });
       const res = await fetch('/api/settings', { method: 'PATCH', headers: { 'Content-Type':'application/json' }, body: JSON.stringify(payload) });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error?.message || 'Save failed');
       setMsg('Saved');
       toast.push({ variant: 'success', heading: 'Settings Saved', description: 'Your settings have been updated.' });
-    } catch (e: any) { setErr(e.message); toast.push({ variant: 'danger', heading: 'Save Failed', description: e.message }); }
+  } catch (e) { const msg = e instanceof Error ? e.message : 'Save failed'; setErr(msg); toast.push({ variant: 'danger', heading: 'Save Failed', description: msg }); }
     finally { setSaving(false); }
   }
 
@@ -62,7 +64,7 @@ function SettingsClient({ initial }: { initial: any }) {
     return (
       <label className="flex flex-col text-xs gap-1" key={name} htmlFor={id}>
         <span className="font-medium">{label}</span>
-  <input id={id} aria-invalid={!!errMsg} aria-describedby={errMsg ? id+'-err' : undefined} type={type} step={step} className="bg-neutral-800 rounded px-2 py-1 text-sm focus-ring" value={(form as any)[name]} onChange={e=>setForm(f=>({...f, [name]: e.target.value}))} />
+  <Input id={id} aria-describedby={errMsg ? id+'-err' : undefined} type={type} step={step} fieldSize="md" variant="inset" invalid={!!errMsg} value={(form as Record<string,string>)[name]} onChange={e=>setForm(f=>({...f, [name]: e.target.value}))} />
         {errMsg && <span id={id+'-err'} className="text-[10px] text-red-400">{errMsg}</span>}
       </label>
     );
@@ -86,7 +88,7 @@ function SettingsClient({ initial }: { initial: any }) {
         </div>
       </form>
       </Card>
-      <p className="text-[10px] text-neutral-500">Risk metrics use Initial Equity as baseline (dynamic equity implemented).</p>
+  <p className="text-[10px] text-[var(--color-muted)]">Risk metrics use Initial Equity as baseline (dynamic equity implemented).</p>
     </div>
   );
 }

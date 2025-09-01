@@ -1,0 +1,26 @@
+name: Close Stale Security PRs
+
+on:
+  schedule:
+    - cron: '0 7 * * 1'
+  workflow_dispatch:
+
+permissions:
+  pull-requests: write
+  issues: write
+
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Close stale security PRs
+        uses: actions/stale@v9
+        with:
+          days-before-pr-stale: 21
+          days-before-pr-close: 7
+          exempt-pr-labels: 'dependencies,keep-open'
+          any-of-pr-labels: 'security'
+          stale-pr-message: >
+            This security-related PR has been inactive for 21 days. It will be closed in 7 days unless updated or labeled 'keep-open'.
+          close-pr-message: >
+            Closing due to inactivity. Reopen or create a new PR if still relevant.

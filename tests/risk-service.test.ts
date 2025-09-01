@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { evaluateRiskForUser } from '@/lib/services/risk-service';
 
 // This is a lightweight placeholder; full integration would mock prisma.

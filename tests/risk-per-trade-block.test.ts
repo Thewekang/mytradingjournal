@@ -12,14 +12,17 @@ async function seed() {
 describe('Per-trade risk blocking [db]', () => {
   it('throws RiskError when risk exceeds limit', async () => {
     const { user, inst } = await seed();
-    const input: any = { instrumentId: inst.id, direction: 'LONG', entryPrice: 1000, quantity: 100, entryAt: new Date().toISOString() };
+  const input = { instrumentId: inst.id, direction: 'LONG' as const, entryPrice: 1000, quantity: 100, entryAt: new Date().toISOString(), fees: 0 };
     let threw = false;
     try {
       await createTrade(user.id, input);
-    } catch (e: any) {
+    } catch (e) {
+      if (e instanceof RiskError) {
       threw = true;
-      expect(e).toBeInstanceOf(RiskError);
-      expect(e.limit).toBe(0.5);
+        expect(e.limit).toBe(0.5);
+      } else {
+        throw e;
+      }
     }
     expect(threw).toBe(true);
   });

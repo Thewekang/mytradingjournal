@@ -1,0 +1,52 @@
+name: Weekly Audit Fix
+
+on:
+  schedule:
+    - cron: '0 6 * * 1' # After security audit
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  audit-fix:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - name: Install deps
+        run: npm ci
+      - name: Run npm audit fix (non-breaking)
+        run: npm audit fix || true
+      - name: Run npm audit fix --force (capture changes)
+        run: npm audit fix --force || true
+      - name: Validate build & tests
+        run: |
+          npm run type-check
+          npm test -- --run --passWithNoTests
+      - name: Create PR if fixes applied
+        run: |
+          if git diff --quiet package.json package-lock.json; then
+            echo "No audit fixes applied."; exit 0; fi
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          branch="chore/audit-fix-$(date +%Y%m%d)"
+          git checkout -b "$branch"
+          git add package.json package-lock.json
+          git commit -m "chore: audit fixes"
+          git push origin "$branch" || echo "Push failed (maybe exists)"
+          if command -v gh >/dev/null 2>&1; then
+            gh pr create --title "chore: audit fixes" --body "Automated npm audit fixes (force included). Review for breaking changes." --base main || true
+            PR_NUMBER=$(gh pr list --search "chore: audit fixes" --state open --limit 1 --json number --jq '.[0].number' || echo '')
+            if [ -n "$PR_NUMBER" ]; then
+              gh pr edit "$PR_NUMBER" --add-label "security,automation" || true
+            fi
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,0 +1,51 @@
+name: Snyk Scan
+
+on:
+  schedule:
+    - cron: '30 5 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  snyk:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - name: Install deps
+        run: npm ci
+      - name: Run Snyk test
+        uses: snyk/actions/node@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          command: test
+          args: --severity-threshold=high --json-file-output=snyk-results.json
+      - name: Upload Snyk SARIF
+        if: always()
+        run: |
+          if [ -f snyk.sarif ]; then echo 'SARIF already exists'; else npx snyk-to-sarif snyk-results.json > snyk.sarif; fi
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      - name: Publish SARIF to code scanning
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: snyk.sarif
+      - name: Generate dashboard (merge Snyk data)
+        if: always()
+        run: node scripts/security-dashboard.mjs
+      - name: Upload dashboard artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-dashboard-snyk
+          path: security-dashboard.json

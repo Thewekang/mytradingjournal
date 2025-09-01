@@ -19,7 +19,7 @@ describe('tradeCreateSchema', () => {
   });
 
   it('rejects negative price', () => {
-    const data: any = {
+    const data = {
       instrumentId: 'iid',
       direction: 'LONG',
       entryPrice: -1,
@@ -29,8 +29,13 @@ describe('tradeCreateSchema', () => {
     try {
       tradeCreateSchema.parse(data);
       throw new Error('should fail');
-    } catch (e: any) {
-  expect(e.issues[0].message.toLowerCase()).toContain('expected number');
+    } catch (e) {
+      if (e && typeof e === 'object' && 'issues' in e) {
+        const issues = (e as { issues?: { message: string }[] }).issues;
+        expect(issues && issues[0].message.toLowerCase()).toContain('expected number');
+      } else {
+        throw e;
+      }
     }
   });
 });

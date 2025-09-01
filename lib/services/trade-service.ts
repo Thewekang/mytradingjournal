@@ -1,6 +1,5 @@
 import { TradeCreateInput, TradeUpdateInput, tradeDirectionEnum, tradeStatusEnum } from '../validation/trade';
 import { z } from 'zod';
-import { PrismaClient } from '@prisma/client';
 import { invalidateAnalyticsCache } from '@/lib/analytics-cache';
 import { recalcGoalsForTradeMutation } from './goal-service';
 import { scheduleRiskEvaluation } from './risk-service';
@@ -53,7 +52,7 @@ export async function createTrade(userId: string, input: TradeCreateInput): Prom
       throw new RiskError(`Per-trade risk ${riskEval.riskPct.toFixed(2)}% exceeds limit ${settings.riskPerTradePct}%`, riskEval.riskPct, settings.riskPerTradePct);
     }
   }
-  const result = await prisma.$transaction(async (tx: any) => {
+  const result = await prisma.$transaction(async (tx) => {
     const trade = await tx.trade.create({
       data: {
         userId,
@@ -133,7 +132,7 @@ export class RiskError extends Error {
 }
 
 export async function updateTrade(userId: string, id: string, input: TradeUpdateInput): Promise<CreatedTradeResult | null> {
-  const result = await prisma.$transaction(async (tx: any) => {
+  const result = await prisma.$transaction(async (tx) => {
     const existing = await tx.trade.findFirst({ where: { id, userId } });
     if (!existing) return null;
     const data: Record<string, unknown> = {};
@@ -210,7 +209,8 @@ export interface ListTradesResult { items: ListTradesResultItem[]; nextCursor: s
 export async function listTrades(userId: string, filters: TradeListFilters): Promise<ListTradesResult> {
   const take = Math.min(filters.limit ?? 25, 100);
   // Prisma does not export model-specific WhereInput types in the generated bundle here; use a shaped object.
-  const where: {
+  type TextFieldFilter = { contains: string; mode: 'insensitive' };
+  interface WhereShape {
     userId: string;
     deletedAt: null;
     instrumentId?: string;
@@ -218,8 +218,9 @@ export async function listTrades(userId: string, filters: TradeListFilters): Pro
     status?: Stat;
     entryAt?: { gte?: Date; lte?: Date };
     tags?: { some: { tagId: { in: string[] } } };
-    OR?: { notes?: any; reason?: any; lesson?: any }[];
-  } = { userId, deletedAt: null };
+    OR?: { notes?: TextFieldFilter; reason?: TextFieldFilter; lesson?: TextFieldFilter }[];
+  }
+  const where: WhereShape = { userId, deletedAt: null };
   if (filters.instrumentId) where.instrumentId = filters.instrumentId;
   if (filters.direction) where.direction = filters.direction as Dir;
   if (filters.status) where.status = filters.status as Stat;

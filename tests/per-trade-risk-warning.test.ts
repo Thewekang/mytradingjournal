@@ -15,7 +15,7 @@ describe('Per-trade risk evaluation [db]', () => {
     const tradeInput = { instrumentId: inst.id, direction: 'LONG' as const, entryPrice: 1000, quantity: 100, entryAt: new Date().toISOString(), fees: 0 };
     let evalResult = null;
     try {
-      const trade = await createTrade(user.id, tradeInput as any);
+  const trade = await createTrade(user.id, tradeInput);
       evalResult = await computePerTradeRiskPct(user.id, { entryPrice: trade.entryPrice, quantity: trade.quantity, instrumentId: trade.instrumentId });
     } catch (e) {
       // If blocked, still compute evaluation directly from intended input

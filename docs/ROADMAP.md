@@ -58,15 +58,15 @@ Layered, modular, strongly typed (TypeScript everywhere):
 └──────────────────────────────────────────────┘
 ```
 
-## 3. Milestone Progress Snapshot (Aug 31 2025)
+## 3. Milestone Progress Snapshot (Sep 1 2025 – Post Export Queue Enhancements)
 
 - Milestone 1 (Scaffold & Auth): COMPLETE
 - Milestone 2 (CRUD + Soft Delete): COMPLETE
 - Milestone 3 (Analytics Core): COMPLETE
 - Milestone 4 (Advanced Analytics & Caching): COMPLETE
 - Milestone 5 (Goals + Risk): COMPLETE (rolling window P/L goals, streak metrics, risk breach groundwork)
-- Milestone 5a (Design System & A11y Polish): IN PROGRESS (tokens, tooltip, focus rings, error summary, theme + high contrast prefs added; light theme contrast tuning & component refactors pending)
-- Milestone 6 (Exports & Reporting): CORE COMPLETE (multi-format exports, streaming CSV, analytics exports); experimental PDF + async queue shipped behind feature flags
+- Milestone 5a (Design System & A11y Polish): IN PROGRESS (core tokens + primitives migrated; neutral palette refactored to tokens; axe + Lighthouse scripts integrated; light theme contrast polishing pending)
+- Milestone 6 (Exports & Reporting): CORE COMPLETE (multi-format exports, filtering, persistent async queue w/ retries & signed download tokens, analytics exports); experimental PDF behind feature flag
 - Milestone 7 (Advanced Goals & Analytics Enhancements): PARTIAL (most metrics delivered; composite & per-instrument goals pending)
 - Milestone 8 (Performance & Offline): NOT STARTED (pre-aggregation & offline/PWA still pending)
 - Milestone 9 (Observability & Ops): NOT STARTED (logging, Sentry/OTEL pending)
@@ -91,15 +91,21 @@ Design System (Milestone 5a parallel sprint):
  - Accessibility artifacts: checklist doc added (skip link, toast roles, arrow key tabs, dialog focus return, trade form validation, table caption; broader form a11y rollout pending)
 
 Milestone 6 (Exports & Reporting): CORE COMPLETE
-- [x] Multi-format trade export (CSV/JSON/XLSX) + column selection
+- [x] Multi-format trade export (CSV/JSON/XLSX) + filtering params (date range, tags)
 - [x] Goal export (CSV/JSON/XLSX) + windowDays
-- [x] Streaming CSV (memory efficient)
 - [x] Analytics exports (daily P/L, tag performance) multi-format
+- [x] Streaming-friendly builder (table abstraction; large dataset strategy groundwork)
+- [x] Persistent async export queue (DB backed) with retry/backoff (exponential), attemptCount, nextAttemptAt
+- [x] Signed download token (HMAC) validation (enforced outside test env)
+- [x] Health endpoint metrics: export mode, queued, processed, failed, retried, avgDurationMs
+- [x] Basic exports UI page (format + type + filters + status + download)
+- [x] Rate limiting (per-user active queued/running jobs cap)
+- [x] Tests: multi-format persistence, download token, rate limit
 - [x] Experimental PDF dashboard snapshot (feature-flagged)
-- [x] Experimental async export queue (feature-flagged) generating CSV payloads
 - [ ] Screenshot/image export of charts (canvas render)
 - [ ] Localization/i18n groundwork (!)
-- [ ] Queue persistence (DB) & JSON/XLSX support
+- [ ] Column selection UI (builder supports internally; expose in front-end)
+- [ ] Large CSV streaming response (switch to streaming when row threshold exceeded)
 
 Milestone 7 (Advanced Goals & Analytics Enhancements):
 - (Most items delivered in Milestone 5). Remaining: composite metrics, per-instrument goals.
@@ -120,16 +126,17 @@ Backlog / Stretch:
 
 Priority Ordering Rationale: finish risk robustness before expanding analytics footprint to keep correctness high; exports unlock user value early for accounting/sharing; then broaden goal sophistication and offline usability.
 
-## 4a. Near-Term Next Steps (Actionable – Updated)
-1. Light theme contrast matrix & token documentation (complete design system baseline).
-2. Integrate Lighthouse (performance + a11y) & axe into CI workflow.
-3. Harden experimental features: persist export queue (Prisma model + file/object storage) & promote PDF export (auth/session handling, retry logic).
-4. Introduce structured logging + Sentry (or OTEL) instrumentation (foundation before scaling further).
-5. Pre-aggregate daily equity / PnL table (performance baseline for large datasets).
-6. Add screenshot / image export for charts (re-usable rendering util) and XLSX/JSON support in async queue.
-7. Composite / per-instrument goals & advanced metrics (avg hold time, daily variance) filling remaining analytics gaps.
-8. Offline capture/PWA shell (installable + local queue) after observability & performance groundwork.
-9. Internationalization groundwork (routing & date/number locale service).
+## 4a. Near-Term Next Steps (Actionable – Updated Post-Queue Upgrade)
+1. Light theme contrast polish & documentation (contrast matrix finalization).
+2. Column selection UI & API param for exports (expose existing builder flexibility).
+3. Streaming CSV pathway (switch to chunked response when > N rows) + memory guard.
+4. Structured logging enrichment (correlation IDs) + Sentry / OTEL instrumentation (Milestone 9 pull-forward).
+5. Pre-aggregate daily equity / PnL table (materialized view / scheduled job) – baseline performance.
+6. Screenshot/image export for charts (canvas/puppeteer or headless adapter) feeding PDF.
+7. Composite & per-instrument goals + remaining advanced metrics (avg hold time, daily variance).
+8. Offline capture/PWA shell (installable + local queue) after observability & perf groundwork.
+9. Internationalization groundwork (locale-aware number/date formatting service).
+10. Harden download token (expiry + one-time use) & optional object storage for large artifacts. (Token hardening COMPLETE; object storage pending)
 
 Rationale ordering focuses on: (a) Design & a11y polish for velocity; (b) Observability early for diagnosing future complexity; (c) Durability of long-running exports; (d) Performance pre-aggregation before data volume grows; (e) Feature breadth (advanced goals, offline, i18n) afterwards.
 
@@ -453,7 +460,7 @@ Future Enhancement:
 
 
 ## Current Status Snapshot
-Milestones 1–3 completed (CRUD, auth, soft delete, pagination with infinite scroll). Milestone 4 analytics implementation substantially complete (core metrics + caching). Remaining near-term focus: service typing refinement, accessibility polish, and preparation for Goals/Risk (Milestone 5).
+Milestones 1–5 complete (CRUD, auth, analytics, goals, risk). Milestone 5a design/a11y polish in progress. Milestone 6 exports subsystem now robust: persistent queue, multi-format (CSV/JSON/XLSX), retry/backoff, signed download tokens, UI, metrics, and tests. Focus shifting to design system completion, observability, streaming performance, and advanced goal metrics.
 
 ## Decision Backlog
 | Topic | Question | Needed By |
@@ -468,4 +475,4 @@ Milestones 1–3 completed (CRUD, auth, soft delete, pagination with infinite sc
 Add progress marks ([x]/[~]) via PRs; keep decisions logged. Treat unchecked (!) items as requiring an explicit decision issue.
 
 ---
-_Last updated: 2025-08-31 (post rolling goals & tooltip)_
+_Last updated: 2025-09-01 (added Lighthouse & axe audits, token migration complete for neutral palette)_

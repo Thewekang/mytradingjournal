@@ -26,6 +26,8 @@ model User {
   tradeTags     TradeTag[]
   goals         Goal[]
   riskBreachLogs RiskBreachLog[]
+  // Persistent export jobs (when ENABLE_PERSIST_EXPORT=1)
+  exportJobs    ExportJob[]
 }
 
 model Instrument {
@@ -149,6 +151,32 @@ model RiskBreachLog {
   limit     Float
   createdAt DateTime @default(now())
   @@index([userId, createdAt])
+}
+
+// Persistent export job queue (replaces in-memory for production)
+model ExportJob {
+  id          String   @id @default(cuid())
+  user        User     @relation(fields: [userId], references: [id])
+  userId      String
+  type        String
+  format      String
+  paramsJson  Json
+  status      String   @default("queued") // queued | running | completed | failed
+  error       String?
+  filename    String?
+  contentType String?
+  payloadBase64 String?
+  attemptCount Int      @default(0) // retry attempts performed
+  nextAttemptAt DateTime? // scheduled time for next retry when transient failure occurs
+  // Download token controls (expiry + one-time use)
+  downloadTokenExpiresAt DateTime? // when the current download token expires (regenerated on list/create)
+  downloadTokenConsumedAt DateTime? // set after successful download (one-time use enforcement)
+  createdAt   DateTime @default(now())
+  startedAt   DateTime?
+  completedAt DateTime?
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+  @@index([nextAttemptAt])
 }
 
 enum GoalType {

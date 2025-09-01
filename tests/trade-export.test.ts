@@ -5,11 +5,9 @@ declare global { var __TEST_USER_ID: string | undefined }
 import { prisma } from '@/lib/prisma';
 
 // Mock next-auth getServerSession BEFORE importing route handler
-vi.mock('next-auth', async () => {
-  return {
-    getServerSession: async () => ({ user: { id: globalThis.__TEST_USER_ID } })
-  } as any;
-});
+vi.mock('next-auth', async () => ({
+  getServerSession: async () => ({ user: { id: globalThis.__TEST_USER_ID, email: 'trade-export@test.local' } })
+}));
 
 // After mock, import GET handler
 import { GET } from '@/app/api/trades/export/route';
@@ -24,15 +22,13 @@ async function seed() {
   return user;
 }
 
-function makeReq(url: string) {
-  return new Request(url) as any; // NextRequest compatible enough for our handler usage
-}
+function makeReq(url: string) { return new Request(url); }
 
 describe('trade export endpoint', () => {
   let baseUrl: string;
   beforeAll(async () => {
     const user = await seed();
-    (globalThis as any).__TEST_USER_ID = user.id;
+  (globalThis as { __TEST_USER_ID?: string }).__TEST_USER_ID = user.id;
     baseUrl = 'http://localhost/api/trades/export';
   });
 

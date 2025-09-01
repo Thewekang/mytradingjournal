@@ -42,8 +42,62 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      - name: Run tests
-        run: npm test -- --reporter=default
+      - name: Run tests (with coverage)
+        run: npm run test:coverage
+
+      - name: Coverage baseline diff
+        run: npm run coverage:diff
+        env:
+          COVERAGE_DROP_MAX: 2
+
+      - name: Notify coverage status (optional)
+        if: always()
+        run: node scripts/notify-webhook.mjs "Coverage run on $GITHUB_SHA (main job)"
+        env:
+          COVERAGE_WEBHOOK_URL: ${{ secrets.COVERAGE_WEBHOOK_URL }}
+
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage
+
+      - name: Upload to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: coverage/lcov.info
+          fail_ci_if_error: true
+          verbose: false
+
+  accessibility:
+    runs-on: ubuntu-latest
+    needs: build-test
+    env:
+      DATABASE_URL: file:./prisma/dev.db
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - name: Install dependencies
+        run: npm ci
+      - name: Generate Prisma Client
+        run: npx prisma generate
+      - name: Run accessibility tests (with coverage)
+        run: npm run test:coverage:a11y
+
+      - name: Coverage diff (a11y only)
+        run: npm run coverage:diff || true # do not fail build twice; main job already enforces
+        env:
+          COVERAGE_DROP_MAX: 2
+      - name: Notify a11y coverage
+        if: always()
+        run: node scripts/notify-webhook.mjs "A11y coverage run on $GITHUB_SHA"
+        env:
+          COVERAGE_WEBHOOK_URL: ${{ secrets.COVERAGE_WEBHOOK_URL }}
 
       - name: Design contrast audit
         run: npm run design:audit

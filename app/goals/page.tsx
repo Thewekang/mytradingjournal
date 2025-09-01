@@ -2,15 +2,17 @@ import { requireUser } from '@/lib/auth';
 import React from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/toast-provider';
 import { Tooltip } from '@/components/ui/tooltip';
 import FormErrorSummary from '@/components/form-error-summary';
 
-async function fetchGoals() {
+interface GoalItem { id: string; type: string; period: string; targetValue: number; currentValue: number; startDate: string; endDate: string; achievedAt: string | null; windowDays: number | null }
+async function fetchGoals(): Promise<GoalItem[]> {
   const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || ''}/api/goals`, { cache: 'no-store' });
-  if (!res.ok) return [] as any[];
+  if (!res.ok) return [];
   const json = await res.json();
-  return json.data || [];
+  return (json.data || []) as GoalItem[];
 }
 
 export default async function GoalsPage() {
@@ -20,7 +22,7 @@ export default async function GoalsPage() {
   return <GoalsClient initial={goals} />;
 }
 
-function GoalsClient({ initial }: { initial: any[] }) {
+function GoalsClient({ initial }: { initial: GoalItem[] }) {
   const [items, setItems] = React.useState(initial);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string|null>(null);
@@ -47,7 +49,7 @@ function GoalsClient({ initial }: { initial: any[] }) {
     if (!form.endDate) errs.endDate = 'End date required';
     if (form.startDate && form.endDate && new Date(form.startDate) > new Date(form.endDate)) errs.endDate = 'End must be after start';
     if (form.type === 'ROLLING_WINDOW_PNL') {
-      const wd = Number((form as any).windowDays);
+      const wd = Number((form as Record<string, string>)['windowDays']);
       if (!wd) errs['goal-window'] = 'Window (days) required';
       else if (wd < 1 || wd > 365) errs['goal-window'] = 'Window must be 1-365';
     }
@@ -60,15 +62,15 @@ function GoalsClient({ initial }: { initial: any[] }) {
     if (!validate()) return;
     setError(null); setLoading(true);
     try {
-      const payload: any = {
+      const payload: Record<string, unknown> = {
         type: form.type,
         period: form.period,
         targetValue: Number(form.targetValue),
         startDate: new Date(form.startDate).toISOString(),
         endDate: new Date(form.endDate).toISOString()
       };
-      if (form.type === 'ROLLING_WINDOW_PNL' && (form as any).windowDays) {
-        payload.windowDays = Number((form as any).windowDays);
+      if (form.type === 'ROLLING_WINDOW_PNL' && (form as Record<string,string>)['windowDays']) {
+        payload.windowDays = Number((form as Record<string,string>)['windowDays']);
       }
       const res = await fetch('/api/goals', { method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify(payload) });
       const json = await res.json();
@@ -77,9 +79,10 @@ function GoalsClient({ initial }: { initial: any[] }) {
       toast.push({ variant: 'success', heading: 'Goal Added', description: 'Goal created successfully.' });
       setForm(f => ({ ...f, targetValue: '' }));
       setFormErrors({});
-    } catch (err:any) {
-      setError(err.message);
-      toast.push({ variant: 'danger', heading: 'Error', description: err.message });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed';
+      setError(msg);
+      toast.push({ variant: 'danger', heading: 'Error', description: msg });
     } finally { setLoading(false); }
   }
 
@@ -96,7 +99,7 @@ function GoalsClient({ initial }: { initial: any[] }) {
     <div className="space-y-6 p-4">
       <div>
         <h1 className="text-xl font-semibold mb-1">Goals</h1>
-        <p className="text-xs text-neutral-400">Track performance targets. Progress updates automatically from trades.</p>
+  <p className="text-xs text-[var(--color-muted)]">Track performance targets. Progress updates automatically from trades.</p>
       </div>
   <Card className="p-3 text-xs bg-[var(--color-bg-muted)] border-[color:var(--color-border)]">
         <form onSubmit={createGoal} noValidate className="flex flex-wrap gap-3 items-end">
@@ -127,24 +130,24 @@ function GoalsClient({ initial }: { initial: any[] }) {
           </div>
           <div className="flex flex-col">
             <label className="mb-0.5" htmlFor="goal-target">Target</label>
-            <input id="goal-target" type="number" step="0.01" value={form.targetValue} onChange={e=>setForm(f=>({...f,targetValue:e.target.value}))} aria-invalid={!!formErrors.targetValue} aria-describedby={formErrors.targetValue ? 'goal-target-err':undefined} className="bg-[var(--color-bg-inset)] border border-[var(--color-border-strong)] rounded px-2 py-1 w-28 focus-ring" />
+            <Input id="goal-target" type="number" step="0.01" value={form.targetValue} onChange={e=>setForm(f=>({...f,targetValue:e.target.value}))} invalid={!!formErrors.targetValue} aria-describedby={formErrors.targetValue ? 'goal-target-err':undefined} className="w-28" variant="inset" fieldSize="sm" />
             {formErrors.targetValue && <span id="goal-target-err" className="text-[10px] text-red-400">{formErrors.targetValue}</span>}
           </div>
           {form.type === 'ROLLING_WINDOW_PNL' && (
             <div className="flex flex-col">
               <label className="mb-0.5" htmlFor="goal-window">Window (days)</label>
-              <input id="goal-window" type="number" min={1} max={365} value={(form as any).windowDays || ''} onChange={e=>setForm(f=>({...f, windowDays: e.target.value }))} aria-invalid={!!formErrors['goal-window']} aria-describedby={formErrors['goal-window']? 'goal-window-err':undefined} className="bg-[var(--color-bg-inset)] border border-[var(--color-border-strong)] rounded px-2 py-1 w-24 focus-ring" />
+              <Input id="goal-window" type="number" min={1} max={365} value={(form as Record<string,string>)['windowDays'] || ''} onChange={e=>setForm(f=>({...f, windowDays: e.target.value }))} invalid={!!formErrors['goal-window']} aria-describedby={formErrors['goal-window']? 'goal-window-err':undefined} className="w-24" variant="inset" fieldSize="sm" />
               {formErrors['goal-window'] && <span id="goal-window-err" className="text-[10px] text-red-400">{formErrors['goal-window']}</span>}
             </div>
           )}
             <div className="flex flex-col">
               <label className="mb-0.5" htmlFor="goal-start">Start</label>
-              <input id="goal-start" type="date" value={form.startDate} onChange={e=>setForm(f=>({...f,startDate:e.target.value}))} aria-invalid={!!formErrors.startDate} aria-describedby={formErrors.startDate? 'goal-start-err':undefined} className="bg-[var(--color-bg-inset)] border border-[var(--color-border-strong)] rounded px-2 py-1 focus-ring" />
+              <Input id="goal-start" type="date" value={form.startDate} onChange={e=>setForm(f=>({...f,startDate:e.target.value}))} invalid={!!formErrors.startDate} aria-describedby={formErrors.startDate? 'goal-start-err':undefined} variant="inset" fieldSize="sm" />
               {formErrors.startDate && <span id="goal-start-err" className="text-[10px] text-red-400">{formErrors.startDate}</span>}
             </div>
             <div className="flex flex-col">
               <label className="mb-0.5" htmlFor="goal-end">End</label>
-              <input id="goal-end" type="date" value={form.endDate} onChange={e=>setForm(f=>({...f,endDate:e.target.value}))} aria-invalid={!!formErrors.endDate} aria-describedby={formErrors.endDate? 'goal-end-err':undefined} className="bg-[var(--color-bg-inset)] border border-[var(--color-border-strong)] rounded px-2 py-1 focus-ring" />
+              <Input id="goal-end" type="date" value={form.endDate} onChange={e=>setForm(f=>({...f,endDate:e.target.value}))} invalid={!!formErrors.endDate} aria-describedby={formErrors.endDate? 'goal-end-err':undefined} variant="inset" fieldSize="sm" />
               {formErrors.endDate && <span id="goal-end-err" className="text-[10px] text-red-400">{formErrors.endDate}</span>}
             </div>
           <Button size="sm" variant="solid" loading={loading} disabled={loading}>{loading ? 'Saving...' : 'Add Goal'}</Button>
@@ -195,21 +198,21 @@ function GoalsClient({ initial }: { initial: any[] }) {
             <div key={g.id} className="rounded p-3 bg-[var(--color-bg-muted)] border border-[var(--color-border-strong)]">
               <div className="flex justify-between text-xs mb-1">
                 <Tooltip content={description}>
-                  <span className="text-neutral-300 font-medium cursor-help">{label} ({g.period})</span>
+                  <span className="text-[var(--color-text)]/80 font-medium cursor-help">{label} ({g.period})</span>
                 </Tooltip>
-                <span className="text-neutral-400 font-mono">{currentDisplay} / {targetDisplay}</span>
+                <span className="text-[var(--color-muted)] font-mono">{currentDisplay} / {targetDisplay}</span>
               </div>
               <div className="h-2 rounded bg-[var(--color-bg-inset)] overflow-hidden" role="progressbar" aria-label={`${label} progress`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct}>
                 <div className={`h-full transition-all duration-300 ease-in-out ${achieved ? 'bg-green-500' : 'bg-blue-500'}`} style={{ width: pct.toFixed(2) + '%' }} />
               </div>
               <div className="flex justify-between items-center mt-1">
-                {achieved ? <span className="text-[10px] text-green-400">Achieved</span> : <span className="text-[10px] text-neutral-500">In progress</span>}
+                {achieved ? <span className="text-[10px] text-green-400">Achieved</span> : <span className="text-[10px] text-[var(--color-muted)]">In progress</span>}
                 <button onClick={()=>deleteGoal(g.id)} className="text-[10px] text-red-400 hover:underline focus-ring rounded px-1">Delete</button>
               </div>
             </div>
           );
         })}
-        {!items.length && <p className="text-xs text-neutral-500">No goals yet.</p>}
+  {!items.length && <p className="text-xs text-[var(--color-muted)]">No goals yet.</p>}
       </Card>
     </div>
   );

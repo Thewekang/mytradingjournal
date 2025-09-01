@@ -44,7 +44,8 @@ Next steps:
 
 ## Primitives (Current)
 - Button: size variants (sm, md), variant (solid, outline, ghost, danger).
-- Card / Surface: neutral background, border, shadow tokens.
+- Card: new semantic surface primitive (`Card`, `CardHeader`, `CardTitle`, `CardContent`) replacing ad‑hoc `div` with raw Tailwind colors. Uses tokenized surfaces (`--color-bg-alt`, `--color-bg-muted`, `--color-bg-inset`) and unified border tokens.
+- Input: unified text / number / date input primitive with size (sm, md), variant (default/inset) and invalid state styling (token-driven). Replaces ad‑hoc `<input>` usages.
 - Badge: semantic variants (neutral, success, danger, warning, info, accent, outline).
 - Alert: semantic messaging (info, success, warning, danger) with optional dismiss.
 - Dialog: accessible modal (focus trap, escape close, backdrop click, scroll lock). Added reduced‑motion compatibility.
@@ -53,6 +54,17 @@ Next steps:
 - Tooltip: accessible (hover + focus, Escape dismiss) replacing native title attributes.
 - Toast: live-region notifications (role=alert/status, auto-dismiss) via `ToastProvider`.
 
+Next steps:
+1. Replace remaining ad‑hoc usage of `bg-neutral-*` legacy classes with semantic surface tokens via Card / upcoming Input primitive.
+2. Migrate input & table header borders from `--color-border` to `--color-border-strong` where current ratio < 3:1 (pending component sweep).
+3. Add automated contrast regression (Lighthouse CI or jest-axe) focusing on dynamic states (hover, focus, disabled) once Playwright smoke harness lands.
+4. Introduce `--color-accent-hover` / `--color-danger-hover` tokens if hover adjustments reduce contrast below 4.5:1 on light theme.
+5. Add per-surface elevation scale documentation (mapping shadow tokens to usage levels).
+
+### Accessibility Progress Update
+- Skip link implemented in `layout.tsx` (visually revealed on focus).
+- Unified focus ring tokens & `.focus-ring` utility applied to Button & Card primitives (in progress for remaining interactive elements).
+- Next: keyboard trap & aria review for dialog / tabs before Lighthouse CI integration.
 ## Planned
 - Toast motion refinements (spring easing + reduced motion path)
 - Form error summary component (integrated with a11y tokens)

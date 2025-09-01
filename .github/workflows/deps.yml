@@ -1,0 +1,47 @@
+name: Weekly Dependency Update
+
+on:
+  schedule:
+    - cron: '0 4 * * 1' # 04:00 UTC every Monday
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  dep-update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - name: Install current deps
+        run: npm ci
+      - name: Run dependency update script
+        run: node scripts/dep-update.mjs
+      - name: Create PR if changes
+        run: |
+          if git diff --quiet package.json package-lock.json; then
+            echo "No dependency changes."; exit 0; fi
+          git config user.name "github-actions"
+            git config user.email "github-actions@users.noreply.github.com"
+          branch="chore/deps-$(date +%Y%m%d)"
+          git checkout -b "$branch"
+          git add package.json package-lock.json
+          git commit -m "chore: weekly dependency updates"
+          git push origin "$branch" || echo "Push failed (maybe existing)"
+          if command -v gh >/dev/null 2>&1; then
+            gh pr create --title "chore: weekly dependency updates" --body "Automated same-major dependency bumps." --base main || true
+            PR_NUMBER=$(gh pr list --search "chore: weekly dependency updates" --state open --limit 1 --json number --jq '.[0].number' || echo '')
+            if [ -n "$PR_NUMBER" ]; then
+              gh pr edit "$PR_NUMBER" --add-label "dependencies,automation" || true
+            fi
+          else
+            echo "gh CLI not available; skipping PR creation"
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

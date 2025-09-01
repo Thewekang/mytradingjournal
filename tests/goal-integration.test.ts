@@ -24,8 +24,8 @@ describe('Goal integration [db]', () => {
     ] });
     // create two trades: one win, one loss
     const nowIso = new Date().toISOString();
-  const t1 = await prisma.trade.create({ data: { userId: user.id, instrumentId: instrument.id, direction: 'LONG', entryPrice: 100, exitPrice: 115, quantity: 1, entryAt: nowIso, exitAt: nowIso, fees: 0, status: 'CLOSED' } }); // +15 * 10 = +150
-  const t2 = await prisma.trade.create({ data: { userId: user.id, instrumentId: instrument.id, direction: 'SHORT', entryPrice: 200, exitPrice: 210, quantity: 1, entryAt: nowIso, exitAt: nowIso, fees: 0, status: 'CLOSED' } }); // -10 * 10 = -100
+  await prisma.trade.create({ data: { userId: user.id, instrumentId: instrument.id, direction: 'LONG', entryPrice: 100, exitPrice: 115, quantity: 1, entryAt: nowIso, exitAt: nowIso, fees: 0, status: 'CLOSED' } }); // +15 * 10 = +150
+  await prisma.trade.create({ data: { userId: user.id, instrumentId: instrument.id, direction: 'SHORT', entryPrice: 200, exitPrice: 210, quantity: 1, entryAt: nowIso, exitAt: nowIso, fees: 0, status: 'CLOSED' } }); // -10 * 10 = -100
     // Recalc
     await recalcGoalsForUser(user.id);
   const goals = await prisma.goal.findMany({ where: { userId: user.id } });

@@ -1,0 +1,51 @@
+name: Publish Security Dashboard
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 8 * * 1'
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install deps
+        run: npm ci
+      - name: Retrieve existing history
+        run: |
+          git fetch origin gh-pages:gh-pages || true
+          if git show gh-pages:security-dashboard/security-dashboard-history.json > security-dashboard-history.json 2>/dev/null; then
+            echo "Existing history retrieved";
+          else
+            echo "No existing history";
+          fi
+      - name: Generate dashboard
+        run: node scripts/security-dashboard.mjs
+      - name: Prepare publish directory
+        run: |
+          mkdir -p out
+          cp security-dashboard.json out/
+          if [ -f security-dashboard-history.json ]; then cp security-dashboard-history.json out/; fi
+          if [ -f security-dashboard.html ]; then cp security-dashboard.html out/index.html; fi
+      - name: Deploy to gh-pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: out
+          destination_dir: security-dashboard
+          keep_files: true
+          enable_jekyll: false
+          user_name: github-actions
+          user_email: github-actions@users.noreply.github.com

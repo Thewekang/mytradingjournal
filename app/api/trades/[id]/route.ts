@@ -1,49 +1,48 @@
 import { NextRequest } from 'next/server';
+import { withLogging, jsonOk, jsonError } from '@/lib/api/logger-wrapper';
 import { RouteContext } from '@/lib/api/params';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth-options';
+import { getSessionUser } from '@/lib/session';
 import { updateTrade, deleteTrade, computeRealizedPnl } from '@/lib/services/trade-service';
 import { tradeUpdateSchema } from '@/lib/validation/trade';
 import { validationError, unauthorized, internal, notFound } from '@/lib/errors';
 import { prisma } from '@/lib/prisma';
 
-export async function GET(_: NextRequest, { params }: RouteContext<{ id: string }>) {
-  const session = await getServerSession(authOptions);
-  const userId = (session?.user as any)?.id as string | undefined;
-  if (!userId) return new Response(JSON.stringify({ data: null, error: unauthorized() }), { status: 401 });
-  const trade = await prisma.trade.findFirst({ where: { id: params.id, userId, deletedAt: null }, include: { tags: { include: { tag: true } }, instrument: { select: { contractMultiplier: true } } } });
+async function _GET(_: NextRequest, { params }: RouteContext<{ id: string }>) {
+  const user = await getSessionUser();
+  if (!user) return new Response(JSON.stringify({ data: null, error: unauthorized() }), { status: 401 });
+  const trade = await prisma.trade.findFirst({ where: { id: params.id, userId: user.id, deletedAt: null }, include: { tags: { include: { tag: true } }, instrument: { select: { contractMultiplier: true } } } });
   if (!trade) return new Response(JSON.stringify({ data: null, error: notFound() }), { status: 404 });
-  const realizedPnl = computeRealizedPnl({ entryPrice: trade.entryPrice, exitPrice: trade.exitPrice ?? undefined, quantity: trade.quantity, direction: trade.direction, fees: trade.fees, contractMultiplier: (trade as any).instrument?.contractMultiplier });
-  return new Response(JSON.stringify({ data: { ...trade, realizedPnl }, error: null }), { status: 200 });
+  const realizedPnl = computeRealizedPnl({ entryPrice: trade.entryPrice, exitPrice: trade.exitPrice ?? undefined, quantity: trade.quantity, direction: trade.direction, fees: trade.fees, contractMultiplier: trade.instrument?.contractMultiplier ?? undefined });
+  return jsonOk({ ...trade, realizedPnl });
 }
 
-export async function PATCH(req: NextRequest, { params }: RouteContext<{ id: string }>) {
-  const session = await getServerSession(authOptions);
-  const userId = (session?.user as any)?.id as string | undefined;
-  if (!userId) return new Response(JSON.stringify({ data: null, error: unauthorized() }), { status: 401 });
+async function _PATCH(req: NextRequest, { params }: RouteContext<{ id: string }>) {
+  const user = await getSessionUser();
+  if (!user) return new Response(JSON.stringify({ data: null, error: unauthorized() }), { status: 401 });
   const body = await req.json().catch(() => null);
   const parsed = tradeUpdateSchema.safeParse(body);
   if (!parsed.success) return new Response(JSON.stringify({ data: null, error: validationError(parsed.error) }), { status: 400 });
   try {
-    const updated = await updateTrade(userId, params.id, parsed.data);
+  const updated = await updateTrade(user.id, params.id, parsed.data);
     if (!updated) return new Response(JSON.stringify({ data: null, error: notFound() }), { status: 404 });
-    return new Response(JSON.stringify({ data: updated, error: null }), { status: 200 });
-  } catch (e) {
-    console.error(e);
-    return new Response(JSON.stringify({ data: null, error: internal() }), { status: 500 });
+  return jsonOk(updated);
+  } catch {
+  return jsonError(internal(), 500);
   }
 }
 
-export async function DELETE(_: NextRequest, { params }: RouteContext<{ id: string }>) {
-  const session = await getServerSession(authOptions);
-  const userId = (session?.user as any)?.id as string | undefined;
-  if (!userId) return new Response(JSON.stringify({ data: null, error: unauthorized() }), { status: 401 });
+async function _DELETE(_: NextRequest, { params }: RouteContext<{ id: string }>) {
+  const user = await getSessionUser();
+  if (!user) return new Response(JSON.stringify({ data: null, error: unauthorized() }), { status: 401 });
   try {
-    const ok = await deleteTrade(userId, params.id);
+  const ok = await deleteTrade(user.id, params.id);
     if (!ok) return new Response(JSON.stringify({ data: null, error: notFound() }), { status: 404 });
-    return new Response(JSON.stringify({ data: true, error: null }), { status: 204 });
-  } catch (e) {
-    console.error(e);
-    return new Response(JSON.stringify({ data: null, error: internal() }), { status: 500 });
+  return new Response(JSON.stringify({ data: true, error: null }), { status: 204, headers: { 'Content-Type': 'application/json' } });
+  } catch {
+  return jsonError(internal(), 500);
   }
 }
+
+export const GET = withLogging(_GET as any, 'GET /api/trades/[id]'); // eslint-disable-line @typescript-eslint/no-explicit-any
+export const PATCH = withLogging(_PATCH as any, 'PATCH /api/trades/[id]'); // eslint-disable-line @typescript-eslint/no-explicit-any
+export const DELETE = withLogging(_DELETE as any, 'DELETE /api/trades/[id]'); // eslint-disable-line @typescript-eslint/no-explicit-any

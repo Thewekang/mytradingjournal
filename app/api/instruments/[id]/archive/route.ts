@@ -1,22 +1,23 @@
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth-options';
+import { isSessionUser } from '@/lib/session';
 import { prisma } from '@/lib/prisma';
 import { RouteContext } from '@/lib/api/params';
 import { unauthorized, forbidden, notFound, internal } from '@/lib/errors';
+import { withLogging, jsonError, jsonOk } from '@/lib/api/logger-wrapper';
 
-export async function POST(_req: Request, { params }: RouteContext<{ id: string }>) {
+async function _POST(_req: Request, { params }: RouteContext<{ id: string }>) {
   const session = await getServerSession(authOptions);
-  const userId = (session?.user as any)?.id as string | undefined;
-  if (!userId) return new Response(JSON.stringify({ data: null, error: unauthorized() }), { status: 401 });
-  const role = (session?.user as any)?.role;
-  if (role !== 'ADMIN') return new Response(JSON.stringify({ data: null, error: forbidden('Admin only') }), { status: 403 });
+  const user = session?.user;
+  if (!isSessionUser(user)) return jsonError(unauthorized(), 401);
+  if (user.role !== 'ADMIN') return jsonError(forbidden('Admin only'), 403);
   try {
     const existing = await prisma.instrument.findUnique({ where: { id: params.id } });
-    if (!existing) return new Response(JSON.stringify({ data: null, error: notFound() }), { status: 404 });
+    if (!existing) return jsonError(notFound(), 404);
     const updated = await prisma.instrument.update({ where: { id: params.id }, data: { isActive: false } });
-    return new Response(JSON.stringify({ data: updated, error: null }), { status: 200 });
-  } catch (e) {
-    console.error(e);
-    return new Response(JSON.stringify({ data: null, error: internal() }), { status: 500 });
+    return jsonOk(updated);
+  } catch {
+    return jsonError(internal(), 500);
   }
 }
+export const POST = withLogging(_POST as any, 'POST /api/instruments/[id]/archive'); // eslint-disable-line @typescript-eslint/no-explicit-any

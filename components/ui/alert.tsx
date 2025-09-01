@@ -4,8 +4,7 @@ import { AlertTriangle, Info, CheckCircle2, XCircle } from 'lucide-react';
 
 export type AlertVariant = 'info' | 'success' | 'warning' | 'danger';
 
-interface BaseProps extends Omit<React.HTMLAttributes<HTMLDivElement>, 'title'> {}
-export interface AlertProps extends BaseProps {
+export interface AlertProps extends Omit<React.HTMLAttributes<HTMLDivElement>, 'title'> {
   variant?: AlertVariant;
   heading?: React.ReactNode; // renamed from title
   icon?: React.ReactNode;

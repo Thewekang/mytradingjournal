@@ -1,0 +1,35 @@
+name: Weekly Security Audit
+
+on:
+  schedule:
+    - cron: '0 5 * * 1' # 05:00 UTC every Monday after deps
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - name: Install deps
+        run: npm ci
+      - name: Run security audit
+        run: node scripts/audit-security.mjs
+        env:
+          AUDIT_LEVEL: moderate
+          AUDIT_FAIL_LEVEL: high
+      - name: Generate security dashboard
+        run: node scripts/security-dashboard.mjs
+      - name: Upload dashboard artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-dashboard
+          path: security-dashboard.json

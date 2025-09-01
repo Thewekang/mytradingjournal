@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect } from 'vitest';
 
 // Placeholder minimal test; in real setup would mock auth or use test client utilities.
 

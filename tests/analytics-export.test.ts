@@ -1,7 +1,11 @@
 import { describe, it, expect, beforeAll, vi } from 'vitest';
 import { prisma } from '@/lib/prisma';
 
-vi.mock('next-auth', async () => ({ getServerSession: async () => ({ user: { id: globalThis.__AX_USER_ID } }) }));
+// Mock session helper directly to avoid relying on next-auth internals
+vi.mock('@/lib/session', () => ({
+  getSessionUser: () => ({ id: (globalThis as { __AX_USER_ID?: string }).__AX_USER_ID || 'missing', email: 'user@example.com' }),
+  requireSessionUser: () => ({ id: (globalThis as { __AX_USER_ID?: string }).__AX_USER_ID || 'missing', email: 'user@example.com' })
+}));
 declare global { var __AX_USER_ID: string | undefined }
 
 import { GET as DailyExport } from '@/app/api/analytics/daily/export/route';
@@ -18,10 +22,10 @@ async function seed(){
   return user;
 }
 
-function req(url:string){ return new Request(url) as any; }
+function req(url:string){ return new Request(url); }
 
 describe('analytics export endpoints', () => {
-  beforeAll(async ()=>{ const user = await seed(); (globalThis as any).__AX_USER_ID = user.id; });
+  beforeAll(async ()=>{ const user = await seed(); (globalThis as { __AX_USER_ID?: string }).__AX_USER_ID = user.id; });
 
   it('daily PnL JSON export', async () => {
     const res = await DailyExport(req('http://localhost/api/analytics/daily/export?format=json&days=5'));

@@ -19,10 +19,27 @@ if (!process.env.DATABASE_URL) {
 
 export default defineConfig({
   test: {
-    environment: 'node',
+    environment: 'jsdom',
     globals: true,
-  include: ['lib/**/*.test.ts', 'tests/**/*.test.ts'],
-  setupFiles: ['./vitest.setup.ts']
+    include: ['lib/**/*.test.ts', 'tests/**/*.{test,a11y}.ts?(x)'],
+    setupFiles: ['./vitest.setup.ts'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'lcov'],
+      reportsDirectory: 'coverage',
+      exclude: [
+        'vitest.setup.ts',
+        'tests/**',
+        'scripts/**',
+        'prisma/**'
+      ],
+      thresholds: ((): { lines: number; statements: number; functions: number; branches: number } => {
+        if (process.env.RELAXED_COVERAGE === '1') {
+          return { lines: 75, statements: 75, functions: 75, branches: 65 };
+        }
+        return { lines: 85, statements: 85, functions: 85, branches: 75 };
+      })()
+    }
   },
   resolve: {
     alias: {

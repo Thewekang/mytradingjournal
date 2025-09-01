@@ -3,13 +3,13 @@
 
 const QUOTE_REGEX = /[",\n]/;
 
-export function csvEscape(val: any): string {
+export function csvEscape(val: unknown): string {
   if (val == null) return '';
   const s = String(val);
   return QUOTE_REGEX.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
 }
 
-export function rowsToCsv(headers: string[], rows: Record<string, any>[]): string {
+export function rowsToCsv<T extends Record<string, unknown>>(headers: string[], rows: T[]): string {
   const out: string[] = [headers.join(',')];
   for (const r of rows) {
     out.push(headers.map(h => csvEscape(r[h])).join(','));
@@ -17,7 +17,7 @@ export function rowsToCsv(headers: string[], rows: Record<string, any>[]): strin
   return out.join('\n');
 }
 
-export function rowsToCsvStream(headers: string[], rows: Record<string, any>[]): ReadableStream<Uint8Array> {
+export function rowsToCsvStream<T extends Record<string, unknown>>(headers: string[], rows: T[]): ReadableStream<Uint8Array> {
   const enc = new TextEncoder();
   let i = 0;
   return new ReadableStream<Uint8Array>({

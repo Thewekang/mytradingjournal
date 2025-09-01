@@ -2,6 +2,8 @@ import { requireUser } from '../../lib/auth';
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Select } from '@/components/ui/select';
 import { useToast } from '@/components/toast-provider';
 import { Dialog } from '@/components/ui/dialog';
 import { Table, THead, TBody, TR, TH, TD } from '@/components/ui/table';
@@ -14,29 +16,35 @@ async function fetchTrades(query = '') {
   return json.data ?? { items: [], nextCursor: null };
 }
 
-export default async function TradesPage({ searchParams }: { searchParams?: Record<string,string|undefined> }) {
+// Next.js App Router passes `searchParams` possibly as a Promise in some edge cases during type generation (.next/types)
+// Conform to Next's generated PageProps expecting an (optional) Promise for searchParams
+type TradesPageProps = { searchParams?: Promise<Record<string, string | undefined>> };
+export default async function TradesPage(props: TradesPageProps) {
+  const raw = props.searchParams ? await props.searchParams : {};
   const user = await requireUser();
   if (!user) {
     return <div className="text-center py-20">Please sign in to view your trades.</div>;
   }
   const qp = new URLSearchParams();
-  ['instrumentId','direction','status','q'].forEach(k => { if (searchParams?.[k]) qp.set(k, searchParams[k]!); });
+  ['instrumentId','direction','status','q'].forEach(k => { const v = raw?.[k]; if (v) qp.set(k, v); });
   const data = await fetchTrades(qp.toString() ? `?${qp.toString()}` : '');
   return <TradesClient initial={data} userEmail={user.email} />;
 }
 
 // Client component
-function TradesClient({ initial, userEmail }: { initial: { items: any[]; nextCursor: string|null }; userEmail: string }) {
+interface TradeListItem { id: string; instrumentId: string; direction: 'LONG' | 'SHORT'; entryPrice: number; exitPrice: number | null; quantity: number; status: 'OPEN' | 'CLOSED' | 'CANCELLED'; entryAt: string; exitAt: string | null; realizedPnl: number | null; tags: { tagId: string; tag?: { label: string; color: string } }[]; notes?: string | null; reason?: string | null; lesson?: string | null; deletedAt?: string | null }
+function TradesClient({ initial, userEmail }: { initial: { items: TradeListItem[]; nextCursor: string|null }; userEmail: string }) {
   const [items, setItems] = React.useState(initial.items);
   const [loading, setLoading] = React.useState(false);
   const [form, setForm] = React.useState({ instrumentId: '', direction: 'LONG', entryPrice: '', quantity: '' });
   const [error, setError] = React.useState<string|null>(null);
-  const [allTags, setAllTags] = React.useState<any[]>([]);
+  const [allTags, setAllTags] = React.useState<{ id: string; label: string; color: string }[]>([]);
   const [selectedTags, setSelectedTags] = React.useState<string[]>([]);
-  const [instruments, setInstruments] = React.useState<any[]>([]);
+  const [instruments, setInstruments] = React.useState<{ id: string; symbol: string }[]>([]);
   const [filters, setFilters] = React.useState({ instrumentId: '', direction: '', status: '', q: '' });
   const [nextCursor, setNextCursor] = React.useState<string|null>(initial.nextCursor);
-  const [editing, setEditing] = React.useState<any|null>(null);
+  type EditingState = Omit<TradeListItem, 'exitPrice' | 'exitAt' | 'tags'> & { exitPrice: string; exitAt: string; tags: string[] };
+  const [editing, setEditing] = React.useState<EditingState | null>(null);
   const [savingEdit, setSavingEdit] = React.useState(false);
   const toast = useToast();
   const sentinelRef = React.useRef<HTMLDivElement|null>(null);
@@ -107,9 +115,10 @@ function TradesClient({ initial, userEmail }: { initial: { items: any[]; nextCur
       setItems([created, ...items]);
       setForm({ instrumentId: '', direction: 'LONG', entryPrice: '', quantity: '' });
       setSelectedTags([]);
-    } catch (err: any) {
-      setError(err.message);
-      toast.push({ variant: 'danger', heading: 'Error', description: err.message });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed';
+      setError(msg);
+      toast.push({ variant: 'danger', heading: 'Error', description: msg });
     } finally { setLoading(false); }
   }
 
@@ -136,12 +145,12 @@ function TradesClient({ initial, userEmail }: { initial: { items: any[]; nextCur
       const json = await data.json();
       setItems(json.data.items);
       setNextCursor(json.data.nextCursor);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed');
     } finally { setLoading(false); }
   }
 
-  async function loadMore() {
+  const loadMore = React.useCallback(async () => {
     if (!nextCursor) return;
     setLoading(true);
     try {
@@ -156,7 +165,7 @@ function TradesClient({ initial, userEmail }: { initial: { items: any[]; nextCur
       setItems(prev => [...prev, ...json.data.items]);
       setNextCursor(json.data.nextCursor);
     } finally { setLoading(false); }
-  }
+  }, [nextCursor, filters.instrumentId, filters.direction, filters.status, filters.q]);
 
   // Infinite scroll: observe sentinel
   React.useEffect(() => {
@@ -171,11 +180,10 @@ function TradesClient({ initial, userEmail }: { initial: { items: any[]; nextCur
     }, { root: null, rootMargin: '200px 0px 0px 0px', threshold: 0 });
     observer.observe(el);
     return () => observer.disconnect();
-  }, [nextCursor, loading, filters.instrumentId, filters.direction, filters.status, filters.q]);
+  }, [nextCursor, loading, filters.instrumentId, filters.direction, filters.status, filters.q, loadMore]);
 
-  function openEdit(t: any) {
-    // normalize editable copy
-    setEditing({ ...t, exitPrice: t.exitPrice ?? '', exitAt: t.exitAt ? t.exitAt.substring(0,16) : '', notes: t.notes ?? '', reason: t.reason ?? '', lesson: t.lesson ?? '', tags: (t.tags||[]).map((rt: any)=>rt.tagId) });
+  function openEdit(t: TradeListItem) {
+    setEditing({ ...t, exitPrice: t.exitPrice != null ? String(t.exitPrice) : '', exitAt: t.exitAt ? t.exitAt.substring(0,16) : '', notes: t.notes ?? null, reason: t.reason ?? null, lesson: t.lesson ?? null, tags: (t.tags||[]).map(rt=>rt.tagId) });
     setEditErrors({});
   }
 
@@ -183,7 +191,7 @@ function TradesClient({ initial, userEmail }: { initial: { items: any[]; nextCur
     e.preventDefault();
     if (!editing) return;
     const fieldErrs: Record<string,string> = {};
-    if (editing.exitPrice !== '' && (isNaN(Number(editing.exitPrice)) || Number(editing.exitPrice) <= 0)) {
+  if (editing.exitPrice.trim() !== '' && (isNaN(Number(editing.exitPrice)) || Number(editing.exitPrice) <= 0)) {
       fieldErrs.exitPrice = 'Exit price must be > 0';
     }
     if (editing.exitAt && isNaN(new Date(editing.exitAt).getTime())) {
@@ -193,8 +201,8 @@ function TradesClient({ initial, userEmail }: { initial: { items: any[]; nextCur
     if (Object.keys(fieldErrs).length) return;
     setSavingEdit(true); setError(null);
     try {
-      const payload: any = {};
-      if (editing.exitPrice !== '') payload.exitPrice = Number(editing.exitPrice);
+  const payload: Record<string, unknown> = {};
+  if (editing.exitPrice.trim() !== '') payload.exitPrice = Number(editing.exitPrice);
       if (editing.exitAt) payload.exitAt = new Date(editing.exitAt).toISOString();
       if (editing.notes) payload.notes = editing.notes;
       if (editing.reason) payload.reason = editing.reason;
@@ -209,8 +217,8 @@ function TradesClient({ initial, userEmail }: { initial: { items: any[]; nextCur
       updated.tags = (editing.tags || []).map((tid: string) => ({ tagId: tid, tag: allTags.find(t => t.id === tid) || { label: tid, color: '#3b82f6' } }));
       setItems(list => list.map(t => t.id === updated.id ? { ...t, ...updated } : t));
       setEditing(null);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Update failed');
     } finally { setSavingEdit(false); }
   }
 
@@ -220,7 +228,7 @@ function TradesClient({ initial, userEmail }: { initial: { items: any[]; nextCur
   <div className="space-y-6">
       <div>
         <h1 className="text-xl font-semibold mb-1">Trades</h1>
-        <p className="text-xs text-neutral-400">User: {userEmail}</p>
+  <p className="text-xs text-[var(--color-muted)]">User: {userEmail}</p>
         <div className="mt-2 flex gap-2">
           <button type="button" onClick={()=>{
             const qp = new URLSearchParams();
@@ -238,31 +246,31 @@ function TradesClient({ initial, userEmail }: { initial: { items: any[]; nextCur
   <form onSubmit={applyFilters} className="flex flex-wrap gap-2 items-end">
         <div className="flex flex-col">
           <label className="text-xs mb-1">Instrument</label>
-          <select className="px-2 py-1 rounded text-xs min-w-[8rem] bg-[var(--color-bg-inset)] border border-[var(--color-border-strong)]" value={filters.instrumentId} onChange={e=>setFilters(f=>({...f, instrumentId: e.target.value}))}>
+          <Select fieldSize="sm" className="min-w-[8rem]" value={filters.instrumentId} onChange={(e: React.ChangeEvent<HTMLSelectElement>)=>setFilters(f=>({...f, instrumentId: e.target.value}))}>
             <option value="">All</option>
             {instruments.map(i => <option key={i.id} value={i.id}>{i.symbol}</option>)}
-          </select>
+          </Select>
         </div>
         <div className="flex flex-col">
           <label className="text-xs mb-1">Direction</label>
-          <select className="px-2 py-1 rounded text-xs bg-[var(--color-bg-inset)] border border-[var(--color-border-strong)]" value={filters.direction} onChange={e=>setFilters(f=>({...f, direction: e.target.value}))}>
+          <Select fieldSize="sm" value={filters.direction} onChange={(e: React.ChangeEvent<HTMLSelectElement>)=>setFilters(f=>({...f, direction: e.target.value}))}>
             <option value="">All</option>
             <option value="LONG">LONG</option>
             <option value="SHORT">SHORT</option>
-          </select>
+          </Select>
         </div>
         <div className="flex flex-col">
           <label className="text-xs mb-1">Status</label>
-          <select className="px-2 py-1 rounded text-xs bg-[var(--color-bg-inset)] border border-[var(--color-border-strong)]" value={filters.status} onChange={e=>setFilters(f=>({...f, status: e.target.value}))}>
+          <Select fieldSize="sm" value={filters.status} onChange={(e: React.ChangeEvent<HTMLSelectElement>)=>setFilters(f=>({...f, status: e.target.value}))}>
             <option value="">All</option>
             <option value="OPEN">OPEN</option>
             <option value="CLOSED">CLOSED</option>
             <option value="CANCELLED">CANCELLED</option>
-          </select>
+          </Select>
         </div>
         <div className="flex flex-col">
           <label className="text-xs mb-1">Search</label>
-          <input className="px-2 py-1 rounded text-xs bg-[var(--color-bg-inset)] border border-[var(--color-border-strong)]" value={filters.q} onChange={e=>setFilters(f=>({...f, q: e.target.value}))} placeholder="notes/reason" />
+          <Input fieldSize="sm" value={filters.q} onChange={e=>setFilters(f=>({...f, q: e.target.value}))} placeholder="notes/reason" />
         </div>
   <button className="text-xs px-3 py-2 rounded bg-[var(--color-bg-inset)] border border-[var(--color-border-strong)] hover:bg-[var(--color-bg-muted)] disabled:opacity-60" disabled={loading}>Filter</button>
         <button type="button" onClick={()=>{setFilters({instrumentId:'', direction:'', status:'', q:''}); applyFilters();}} className="text-xs underline ml-1">Reset</button>
@@ -326,7 +334,7 @@ function TradesClient({ initial, userEmail }: { initial: { items: any[]; nextCur
                 <TD>{t.quantity}</TD>
                 <TD>{t.status}</TD>
                 <TD className={t.realizedPnl != null ? (t.realizedPnl >= 0 ? 'text-green-400 font-mono text-xs' : 'text-red-400 font-mono text-xs') : 'font-mono text-xs'}>{t.realizedPnl != null ? t.realizedPnl.toFixed(2) : '-'}</TD>
-                <TD className="max-w-[160px]">{(t.tags || []).map((rt: any) => rt.tag ? <TagChip key={rt.tagId} label={rt.tag.label} color={rt.tag.color} /> : null)}</TD>
+                <TD className="max-w-[160px]">{(t.tags || []).map(rt => rt.tag ? <TagChip key={rt.tagId} label={rt.tag.label} color={rt.tag.color} /> : null)}</TD>
                 <TD className="space-x-2">
                   {!t.deletedAt && <button onClick={()=>openEdit(t)} className="text-blue-400 hover:underline text-xs">Edit</button>}
                   {!t.deletedAt && <button onClick={()=>softDelete(t.id)} className="text-red-400 hover:underline text-xs">Delete</button>}
@@ -334,7 +342,7 @@ function TradesClient({ initial, userEmail }: { initial: { items: any[]; nextCur
                 </TD>
               </TR>
             ))}
-            {!items.length && <TR><TD colSpan={8} className="text-center text-neutral-500 py-4">No trades yet.</TD></TR>}
+            {!items.length && <TR><TD colSpan={8} className="text-center text-[var(--color-muted)] py-4">No trades yet.</TD></TR>}
           </TBody>
         </Table>
       </div>
@@ -342,7 +350,7 @@ function TradesClient({ initial, userEmail }: { initial: { items: any[]; nextCur
         <div className="text-center flex flex-col items-center gap-2">
           <button onClick={loadMore} disabled={loading} className="mt-2 px-4 py-2 rounded text-xs bg-[var(--color-bg-inset)] border border-[var(--color-border-strong)] hover:bg-[var(--color-bg-muted)] disabled:opacity-60">{loading ? 'Loading...' : 'Load More'}</button>
           <div ref={sentinelRef} aria-hidden className="h-1 w-full" />
-          <p className="text-[10px] text-neutral-500">Scrolling loads more automatically…</p>
+          <p className="text-[10px] text-[var(--color-muted)]">Scrolling loads more automatically…</p>
         </div>
       )}
       <Dialog open={!!editing} onOpenChange={(o)=>{ if(!o) closeEdit(); }} title="Edit Trade">
@@ -350,11 +358,11 @@ function TradesClient({ initial, userEmail }: { initial: { items: any[]; nextCur
           <form onSubmit={saveEdit} className="space-y-3 text-xs" noValidate>
             <div className="flex gap-2">
               <label className="flex-1" htmlFor="edit-exitPrice">Exit Price
-                <input id="edit-exitPrice" type="number" step="0.01" value={editing.exitPrice} onChange={e=>{setEditing((ed:any)=>({...ed, exitPrice: e.target.value})); if (editErrors.exitPrice) setEditErrors(er=>({...er, exitPrice: ''}));}} className="mt-1 w-full px-2 py-1 rounded focus-ring bg-[var(--color-bg-inset)] border border-[var(--color-border-strong)]" aria-invalid={!!editErrors.exitPrice} aria-describedby={editErrors.exitPrice? 'edit-exitPrice-err':undefined} />
+                <input id="edit-exitPrice" type="number" step="0.01" value={editing.exitPrice} onChange={e=>{const val=e.target.value; setEditing(ed=> ed ? { ...ed, exitPrice: val } : ed); if (editErrors.exitPrice) setEditErrors(er=>({...er, exitPrice: ''}));}} className="mt-1 w-full px-2 py-1 rounded focus-ring bg-[var(--color-bg-inset)] border border-[var(--color-border-strong)]" aria-invalid={!!editErrors.exitPrice} aria-describedby={editErrors.exitPrice? 'edit-exitPrice-err':undefined} />
                 {editErrors.exitPrice && <span id="edit-exitPrice-err" className="text-[10px] text-red-400">{editErrors.exitPrice}</span>}
               </label>
               <label className="flex-1" htmlFor="edit-status">Status
-                <select id="edit-status" value={editing.status} onChange={e=>setEditing((ed:any)=>({...ed, status: e.target.value}))} className="mt-1 w-full px-2 py-1 rounded focus-ring bg-[var(--color-bg-inset)] border border-[var(--color-border-strong)]">
+                <select id="edit-status" value={editing.status} onChange={e=>{const v = e.target.value as EditingState['status']; setEditing(ed=> ed ? { ...ed, status: v } : ed);}} className="mt-1 w-full px-2 py-1 rounded focus-ring bg-[var(--color-bg-inset)] border border-[var(--color-border-strong)]">
                   <option value="OPEN">OPEN</option>
                   <option value="CLOSED">CLOSED</option>
                   <option value="CANCELLED">CANCELLED</option>
@@ -362,20 +370,20 @@ function TradesClient({ initial, userEmail }: { initial: { items: any[]; nextCur
               </label>
             </div>
             <label className="block" htmlFor="edit-exitAt">Exit At
-              <input id="edit-exitAt" type="datetime-local" value={editing.exitAt} onChange={e=>{setEditing((ed:any)=>({...ed, exitAt: e.target.value})); if (editErrors.exitAt) setEditErrors(er=>({...er, exitAt: ''}));}} className="mt-1 w-full px-2 py-1 rounded focus-ring bg-[var(--color-bg-inset)] border border-[var(--color-border-strong)]" aria-invalid={!!editErrors.exitAt} aria-describedby={editErrors.exitAt? 'edit-exitAt-err':undefined} />
+              <input id="edit-exitAt" type="datetime-local" value={editing.exitAt} onChange={e=>{const val=e.target.value; setEditing(ed=> ed ? { ...ed, exitAt: val } : ed); if (editErrors.exitAt) setEditErrors(er=>({...er, exitAt: ''}));}} className="mt-1 w-full px-2 py-1 rounded focus-ring bg-[var(--color-bg-inset)] border border-[var(--color-border-strong)]" aria-invalid={!!editErrors.exitAt} aria-describedby={editErrors.exitAt? 'edit-exitAt-err':undefined} />
               {editErrors.exitAt && <span id="edit-exitAt-err" className="text-[10px] text-red-400">{editErrors.exitAt}</span>}
             </label>
             <label className="block" htmlFor="edit-notes">Notes
-              <textarea id="edit-notes" value={editing.notes} onChange={e=>setEditing((ed:any)=>({...ed, notes: e.target.value}))} className="mt-1 w-full px-2 py-1 rounded h-16 focus-ring bg-[var(--color-bg-inset)] border border-[var(--color-border-strong)]" />
+              <textarea id="edit-notes" value={editing.notes ?? ''} onChange={e=>{const val=e.target.value; setEditing(ed=> ed ? { ...ed, notes: val } : ed);}} className="mt-1 w-full px-2 py-1 rounded h-16 focus-ring bg-[var(--color-bg-inset)] border border-[var(--color-border-strong)]" />
             </label>
             <label className="block" htmlFor="edit-reason">Reason
-              <textarea id="edit-reason" value={editing.reason} onChange={e=>setEditing((ed:any)=>({...ed, reason: e.target.value}))} className="mt-1 w-full px-2 py-1 rounded h-12 focus-ring bg-[var(--color-bg-inset)] border border-[var(--color-border-strong)]" />
+              <textarea id="edit-reason" value={editing.reason ?? ''} onChange={e=>{const val=e.target.value; setEditing(ed=> ed ? { ...ed, reason: val } : ed);}} className="mt-1 w-full px-2 py-1 rounded h-12 focus-ring bg-[var(--color-bg-inset)] border border-[var(--color-border-strong)]" />
             </label>
             <label className="block" htmlFor="edit-lesson">Lesson
-              <textarea id="edit-lesson" value={editing.lesson} onChange={e=>setEditing((ed:any)=>({...ed, lesson: e.target.value}))} className="mt-1 w-full px-2 py-1 rounded h-12 focus-ring bg-[var(--color-bg-inset)] border border-[var(--color-border-strong)]" />
+              <textarea id="edit-lesson" value={editing.lesson ?? ''} onChange={e=>{const val=e.target.value; setEditing(ed=> ed ? { ...ed, lesson: val } : ed);}} className="mt-1 w-full px-2 py-1 rounded h-12 focus-ring bg-[var(--color-bg-inset)] border border-[var(--color-border-strong)]" />
             </label>
             <label className="block" htmlFor="edit-tags">Tags
-              <select id="edit-tags" multiple value={editing.tags} onChange={e=>setEditing((ed:any)=>({...ed, tags: Array.from(e.target.selectedOptions).map(o=>o.value)}))} className="mt-1 w-full px-2 py-1 rounded h-24 focus-ring bg-[var(--color-bg-inset)] border border-[var(--color-border-strong)]">
+              <select id="edit-tags" multiple value={editing.tags} onChange={e=>{const vals = Array.from(e.target.selectedOptions).map(o=>o.value); setEditing(ed=> ed ? { ...ed, tags: vals } : ed);}} className="mt-1 w-full px-2 py-1 rounded h-24 focus-ring bg-[var(--color-bg-inset)] border border-[var(--color-border-strong)]">
                 {allTags.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
               </select>
             </label>

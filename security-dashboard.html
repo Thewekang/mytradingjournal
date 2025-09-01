@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Security Dashboard</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+ body { font-family: system-ui, Arial, sans-serif; margin: 2rem; background:#0f172a; color:#f1f5f9; }
+ h1 { font-size: 1.6rem; margin-bottom: .5rem; }
+ table { border-collapse: collapse; margin-top:1rem; width:100%; }
+ th, td { border:1px solid #334155; padding:.5rem .75rem; text-align:left; }
+ th { background:#1e293b; }
+ code { background:#1e293b; padding:.15rem .35rem; border-radius:4px; }
+ .ok { color:#10b981; }
+ .warn { color:#f59e0b; }
+ .crit { color:#ef4444; }
+ footer { margin-top:2rem; font-size:.75rem; opacity:.7; }
+ a { color:#38bdf8; }
+</style>
+</head>
+<body>
+<h1>Security Dashboard</h1>
+<p>Aggregated metrics from latest scheduled workflows. Raw JSON: <a href="security-dashboard.json">security-dashboard.json</a></p>
+<div id="content">Loading...</div>
+<section id="trends" aria-label="Historical trends" style="margin-top:2rem"></section>
+<footer>Generated client-side from security-dashboard.json • <span id="ts"></span></footer>
+<script>
+function spark(values, color) {
+  if (!values.length) return '';
+  const w = 160, h = 40;
+  const min = Math.min(...values), max = Math.max(...values);
+  const range = max - min || 1;
+  const pts = values.map((v,i) => {
+    const x = (i/(values.length-1))* (w-4) + 2;
+    const y = h - 2 - ((v - min)/range) * (h-4);
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(' ');
+  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" role="img" aria-label="trend"><polyline fill="none" stroke="${color}" stroke-width="2" points="${pts}"/></svg>`;
+}
+
+async function load() {
+  try {
+    const res = await fetch('security-dashboard.json?_=' + Date.now());
+    if(!res.ok) throw new Error('Failed to load JSON');
+    const data = await res.json();
+    document.getElementById('ts').textContent = data.timestamp || 'n/a';
+    const rows = [];
+    if (data.coverage) {
+      rows.push(['Coverage Lines', data.coverage.lines.pct?.toFixed?.(2) + '%']);
+      rows.push(['Coverage Statements', data.coverage.statements.pct?.toFixed?.(2) + '%']);
+      rows.push(['Coverage Functions', data.coverage.functions.pct?.toFixed?.(2) + '%']);
+      rows.push(['Coverage Branches', data.coverage.branches.pct?.toFixed?.(2) + '%']);
+    }
+    if (data.snyk) {
+      rows.push(['Snyk Unique Vulns', data.snyk.uniqueVulns]);
+    }
+    if (data.audit) {
+      rows.push(['Audit Vulnerabilities (count)', data.audit.vulnerabilities]);
+    }
+    if (!rows.length) {
+      document.getElementById('content').textContent = 'No data yet';
+      return;
+    }
+    const table = document.createElement('table');
+    table.innerHTML = '<thead><tr><th>Metric</th><th>Value</th></tr></thead>';
+    const tbody = document.createElement('tbody');
+    rows.forEach(([k,v]) => {
+      const tr = document.createElement('tr');
+      const td1 = document.createElement('td'); td1.textContent = k; tr.appendChild(td1);
+      const td2 = document.createElement('td'); td2.textContent = v == null ? 'n/a' : v; tr.appendChild(td2);
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    document.getElementById('content').innerHTML='';
+    document.getElementById('content').appendChild(table);
+
+    // Load history (optional)
+    try {
+      const histRes = await fetch('security-dashboard-history.json?_=' + Date.now());
+      if (histRes.ok) {
+        const hist = await histRes.json();
+        if (Array.isArray(hist) && hist.length) {
+          const lines = hist.map(r => r.coverage?.lines).filter(v => typeof v === 'number');
+          const vulns = hist.map(r => r.snykUniqueVulns).filter(v => typeof v === 'number');
+          const audit = hist.map(r => r.auditVulns).filter(v => typeof v === 'number');
+          const trends = document.getElementById('trends');
+          trends.innerHTML = '<h2 style="font-size:1.2rem;margin:0 0 .5rem">Trends</h2>';
+          const grid = document.createElement('div');
+          grid.style.display='flex';
+          grid.style.gap='1.5rem';
+          function block(title, svg) { const d=document.createElement('div'); d.innerHTML = `<strong>${title}</strong><div>${svg||'n/a'}</div>`; return d; }
+          grid.appendChild(block('Coverage Lines %', spark(lines,'#10b981')));
+          grid.appendChild(block('Snyk Vulns', spark(vulns,'#ef4444')));
+          grid.appendChild(block('Audit Vulns', spark(audit,'#f59e0b')));
+          trends.appendChild(grid);
+        }
+      }
+    } catch { /* ignore history errors */ }
+  } catch (e) {
+    document.getElementById('content').textContent = 'Error loading dashboard: ' + e.message;
+  }
+}
+load();
+</script>
+</body>
+</html>

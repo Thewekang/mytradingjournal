@@ -43,7 +43,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   React.useEffect(() => {
     if (!toasts.length) return;
     const timers = toasts.map(t => {
-      if (!t.duration) return null as any;
+  if (!t.duration) return null;
       const remaining = t.createdAt + t.duration - Date.now();
       if (remaining <= 0) { dismiss(t.id); return null; }
       return setTimeout(() => dismiss(t.id), remaining);

@@ -22,7 +22,7 @@ describe('trade lifecycle service', () => {
     expect(list.items.find(t => t.id === created.id)?.realizedPnl).toBe(59);
     const deleted = await deleteTrade(user.id, created.id);
     expect(deleted).toBe(true);
-    let postDelete = await listTrades(user.id, { limit: 10 });
+  const postDelete = await listTrades(user.id, { limit: 10 });
     expect(postDelete.items.find(t => t.id === created.id)).toBeUndefined();
     const restored = await restoreTrade(user.id, created.id);
     expect(restored).toBe(true);

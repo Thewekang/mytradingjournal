@@ -3,7 +3,7 @@ import { ZodError } from 'zod';
 export interface ApiErrorShape {
   code: string;
   message: string;
-  details?: any;
+  details?: unknown;
 }
 
 export function validationError(err: ZodError): ApiErrorShape {
@@ -34,13 +34,14 @@ export function conflict(message = 'Conflict'): ApiErrorShape {
   return { code: 'CONFLICT', message };
 }
 
-export function badRequest(message = 'Bad request', details?: any): ApiErrorShape {
+export function badRequest(message = 'Bad request', details?: unknown): ApiErrorShape {
   return { code: 'BAD_REQUEST', message, details };
 }
 
 // Map known Prisma error codes (P2002 unique constraint, etc.)
-export function mapPrismaError(e: any): ApiErrorShape {
-  if (e?.code === 'P2002') {
+export function mapPrismaError(e: unknown): ApiErrorShape {
+  const err = e as { code?: string } | null;
+  if (err?.code === 'P2002') {
     return conflict('Unique constraint violation');
   }
   return internal();

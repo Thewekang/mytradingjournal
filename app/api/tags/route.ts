@@ -1,30 +1,36 @@
 import { NextRequest } from 'next/server';
+import { withLogging, jsonError, jsonOk } from '@/lib/api/logger-wrapper';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth-options';
+import { isSessionUser } from '@/lib/session';
 import { listTags, createTag } from '@/lib/services/tag-service';
 import { validationError, unauthorized, internal } from '@/lib/errors';
 import { tagCreateSchema } from '@/lib/validation/trade';
 
-export async function GET() {
+async function _GET() {
   const session = await getServerSession(authOptions);
-  const userId = (session?.user as any)?.id as string | undefined;
+  const user = session?.user;
+  const userId = isSessionUser(user) ? user.id : undefined;
   if (!userId) return new Response(JSON.stringify({ data: null, error: unauthorized() }), { status: 401 });
   const tags = await listTags(userId);
-  return new Response(JSON.stringify({ data: tags, error: null }), { status: 200 });
+  return jsonOk(tags);
 }
 
-export async function POST(req: NextRequest) {
+async function _POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
-  const userId = (session?.user as any)?.id as string | undefined;
+  const user = session?.user;
+  const userId = isSessionUser(user) ? user.id : undefined;
   if (!userId) return new Response(JSON.stringify({ data: null, error: unauthorized() }), { status: 401 });
   const body = await req.json().catch(() => null);
   const parsed = tagCreateSchema.safeParse(body);
-  if (!parsed.success) return new Response(JSON.stringify({ data: null, error: validationError(parsed.error) }), { status: 400 });
+  if (!parsed.success) return jsonError(validationError(parsed.error), 400);
   try {
     const tag = await createTag(userId, parsed.data);
-    return new Response(JSON.stringify({ data: tag, error: null }), { status: 201 });
-  } catch (e) {
-    console.error(e);
-    return new Response(JSON.stringify({ data: null, error: internal() }), { status: 500 });
+    return jsonOk(tag, 201);
+  } catch {
+    return jsonError(internal(), 500);
   }
 }
+
+export const GET = withLogging(_GET, 'GET /api/tags');
+export const POST = withLogging(_POST, 'POST /api/tags');

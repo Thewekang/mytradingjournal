@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, vi } from 'vitest';
 import { prisma } from '@/lib/prisma';
 
 vi.mock('next-auth', async () => ({
-  getServerSession: async () => ({ user: { id: globalThis.__GOAL_USER_ID } })
+  getServerSession: async () => ({ user: { id: globalThis.__GOAL_USER_ID, email: 'goal-export@test.local' } })
 }));
 
 declare global { var __GOAL_USER_ID: string | undefined }
@@ -19,13 +19,13 @@ async function seed() {
   return user;
 }
 
-function makeReq(url: string) { return new Request(url) as any; }
+function makeReq(url: string) { return new Request(url); }
 
 describe('goal export endpoint', () => {
   let baseUrl: string;
   beforeAll(async () => {
     const user = await seed();
-    (globalThis as any).__GOAL_USER_ID = user.id;
+  (globalThis as { __GOAL_USER_ID?: string }).__GOAL_USER_ID = user.id;
     baseUrl = 'http://localhost/api/goals/export';
   });
 

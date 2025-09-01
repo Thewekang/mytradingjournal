@@ -71,5 +71,70 @@ See `ACCESSIBILITY_CHECKLIST.md` (updated). Gaps: automated contrast verificatio
 | 4 | Form error summary | Short-term |
 | 5 | Accessibility automation | Short-term |
 
+## Phase 1 Stabilization Plan (Initiated)
+Objective: Reduce immediate friction (lint noise, missing hooks plugin, prisma generate prerequisite) without large refactors, enabling clearer diffs for subsequent typing & a11y automation.
+
+Scope (Week 1):
+- Add `pretest` hook to always run `prisma generate` (DONE).
+- Add `eslint-plugin-react-hooks` and enforce hooks rules (DONE).
+- Temporarily downgrade `@typescript-eslint/no-explicit-any` to warning (DONE) to surface real errors distinctly; will revert to error in Phase 2 after introducing shared DTO types.
+- Introduce optional module stub for `playwright` to prevent type errors when feature flag disabled (DONE).
+- Capture baseline count of remaining warnings (next lint run post-change) to track reduction KPI (target: -70% by end of Phase 2).
+
+Upcoming Within Phase 1:
+- Establish shared `types/api.ts` with ResponseEnvelope<T> and key entity DTOs (trades, goals) then migrate 2–3 high-traffic routes off `any` (partial reduction while warnings accept).
+- Add minimal CI note: ensure lint runs but does not fail build on warnings (documentation update).
+
+Exit Criteria:
+- All structural ESLint errors (unused vars, missing rules) resolved.
+- Playwright optional feature build passes type-check without dependency installed.
+- Baseline warnings documented for Phase 2 reduction.
+
+Baseline Metrics (captured after initial Phase 1 refactor):
+- Lint: 0 errors, 186 warnings (@typescript-eslint/no-explicit-any predominant)
+- Test suites: 31/31 passing (44 tests)
+- Type-check: clean (playwright stub active)
+
+Notes: One service signature (createInstrument) kept backward compatible while removing unused internal user filtering; future Phase 2 may introduce per-user scoping.
+
+## Phase 1 Completion Summary
+Additional refinements applied post-baseline:
+- Standardized ResponseEnvelope + DTOs for goals, instruments, daily analytics, export jobs.
+- Added DTOs: GoalDTO, InstrumentDTO, DailyPnlPayload, ExportJobDTO (+ detail variant).
+- Reduced warning count from 186 -> 175 through structural typing of key routes (no new errors introduced).
+- Ensured export queue endpoints produce structured typed responses (feature-flag respected).
+
+Phase 1 Exit Status: MET (zero lint errors, uniform API envelope on high-traffic routes, tests green, baseline warnings recorded, optional playwright feature stubbed).
+
+## Phase 2 Plan (Typing & A11y Automation Kickoff)
+Objectives:
+- Reduce @typescript-eslint/no-explicit-any warnings by ≥70% (175 -> ≤52).
+- Re-enable no-explicit-any as 'error' after targeted refactors complete (late Phase 2).
+- Introduce automated a11y regression checks (jest-axe for component snapshots + add minimal Lighthouse CI script placeholder).
+- Strengthen auth / prisma middleware typings (remove `as any` casts in session user extraction & prisma middleware).
+- Add README / Architecture note on API response contract.
+
+Scope (Initial Sprint):
+1. Introduce `SessionUser` type and helper to extract typed user (removes scattered `(session?.user as any)` casts).
+2. Type `analytics-cache` store (replace `any` with discriminated union keyed by cache segment).
+3. Refactor `trade-service` hotspots to eliminate transaction parameter `any` and compute PnL parameters generics.
+4. Tighten `errors.ts` with a concrete `AppError` union and mapping helpers returning `ApiError`.
+5. Add `axe` tests for: nav-bar, tooltip, dashboard page (smoke), forms (goal create) focusing on roles/aria/contrast tokens presence.
+
+Stretch (if time permits):
+- Add `ExportJob` persistence planning doc (DB table schema sketch) without implementation.
+- Type export queue params and builder (replace Record<string, any> with per-type param schema).
+
+Deferred to Phase 3:
+- Turn on strict ESLint `no-explicit-any` error.
+- Full PDF export stabilization.
+- Streaming CSV + JSON/XLSX export formats.
+
+KPI Tracking:
+- Warning count snapshot at Phase 2 start: 175.
+- Target mid-sprint: ≤110; end-sprint: ≤52.
+
+---
+
 ---
 Generated: 2025-08-31

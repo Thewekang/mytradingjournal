@@ -1,32 +1,63 @@
 import { NextRequest } from 'next/server';
+import { withLogging, jsonError, jsonOk } from '@/lib/api/logger-wrapper';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth-options';
 import { listInstruments, createInstrument } from '@/lib/services/instrument-service';
 import { validationError, unauthorized, internal, forbidden, conflict } from '@/lib/errors';
 import { instrumentCreateSchema } from '@/lib/validation/trade';
+import { InstrumentDTO, ApiError } from '@/types/api';
 
-export async function GET() {
-  const instruments = await listInstruments('ignored');
-  return new Response(JSON.stringify({ data: instruments, error: null }), { status: 200 });
+async function _GET() {
+  const instruments = await listInstruments();
+  type InstrumentEntity = typeof instruments[number];
+  const dto: InstrumentDTO[] = instruments.map((i: InstrumentEntity) => ({
+    id: i.id,
+    symbol: i.symbol,
+    name: i.name,
+    category: i.category,
+    currency: i.currency,
+    tickSize: i.tickSize,
+    contractMultiplier: i.contractMultiplier ?? null,
+    isActive: i.isActive,
+    createdAt: i.createdAt.toISOString(),
+    updatedAt: i.updatedAt.toISOString(),
+  }));
+  return jsonOk(dto);
 }
 
-export async function POST(req: NextRequest) {
+async function _POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
-  const userId = (session?.user as any)?.id as string | undefined;
-  if (!userId) return new Response(JSON.stringify({ data: null, error: unauthorized() }), { status: 401 });
-  const role = (session?.user as any)?.role;
-  if (role !== 'ADMIN') return new Response(JSON.stringify({ data: null, error: forbidden('Admin only') }), { status: 403 });
-  const body = await req.json().catch(() => null);
+  const user = session?.user as { id?: string; role?: string } | undefined;
+  const userId = user?.id;
+  if (!userId) return jsonError(unauthorized(), 401);
+  if (user?.role !== 'ADMIN') return jsonError(forbidden('Admin only'), 403);
+  const body: unknown = await req.json().catch(() => null);
   const parsed = instrumentCreateSchema.safeParse(body);
-  if (!parsed.success) return new Response(JSON.stringify({ data: null, error: validationError(parsed.error) }), { status: 400 });
+  if (!parsed.success) return jsonError(validationError(parsed.error), 400);
   try {
     const inst = await createInstrument(userId, parsed.data);
-    return new Response(JSON.stringify({ data: inst, error: null }), { status: 201 });
-  } catch (e: any) {
-    console.error(e);
-    if (e.code === 'CONFLICT') {
-      return new Response(JSON.stringify({ data: null, error: conflict('Instrument already exists') }), { status: 409 });
+    const dto: InstrumentDTO = {
+      id: inst.id,
+      symbol: inst.symbol,
+      name: inst.name,
+      category: inst.category,
+      currency: inst.currency,
+      tickSize: inst.tickSize,
+      contractMultiplier: inst.contractMultiplier ?? null,
+      isActive: inst.isActive,
+      createdAt: inst.createdAt.toISOString(),
+      updatedAt: inst.updatedAt.toISOString(),
+    };
+  return jsonOk(dto, 201);
+  } catch (e) {
+    const err = e as ApiError & { code?: string };
+    const code = (err as { code?: string })?.code;
+    if (code === 'CONFLICT') {
+      return jsonError(conflict('Instrument already exists'), 409);
     }
-    return new Response(JSON.stringify({ data: null, error: internal() }), { status: 500 });
+    return jsonError(internal(), 500);
   }
 }
+
+export const GET = withLogging(_GET, 'GET /api/instruments');
+export const POST = withLogging(_POST, 'POST /api/instruments');

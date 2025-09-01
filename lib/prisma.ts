@@ -2,24 +2,34 @@
 import { PrismaClient } from '@prisma/client';
 
 declare global {
-  // eslint-disable-next-line no-var
   var __PRISMA__: PrismaClient | undefined;
+  var __USER_SETTINGS_MW__: boolean | undefined;
 }
 
 const client = global.__PRISMA__ ?? new PrismaClient();
 
-// Middleware: auto-create JournalSettings & seed baseline data (instruments + default tags) after User creation
-if (typeof (client as any).$use === 'function' && !(global as any).__USER_SETTINGS_MW__) {
-  ;(client as any).$use(async (params: any, next: (params: any) => Promise<any>) => {
+// Type guard for created user result (middleware result is unknown generically)
+function hasUserId(result: unknown): result is { id: string } {
+  return typeof result === 'object' && result !== null && typeof (result as { id?: unknown }).id === 'string';
+}
+
+// Middleware: after a User is created ensure related baseline entities exist.
+type MiddlewareParams = { model?: string; action: string };
+type MiddlewareNext = (p: MiddlewareParams) => Promise<unknown>;
+
+if (!global.__USER_SETTINGS_MW__ && typeof (client as unknown as { $use?: unknown }).$use === 'function') {
+  (client as unknown as { $use: (fn: (p: MiddlewareParams, n: MiddlewareNext) => Promise<unknown>) => void }).$use(async (params, next) => {
     const result = await next(params);
-    try {
-      if (params.model === 'User' && params.action === 'create') {
-        const userId = (result as any).id;
+    if (params.model === 'User' && params.action === 'create' && hasUserId(result)) {
+      const userId = result.id;
+      try {
         // 1. Ensure JournalSettings exists
         await client.journalSettings.upsert({ where: { userId }, update: {}, create: { userId } });
 
-        // 2. Seed global instruments (idempotent). Only needs to exist once globally.
-        const DEFAULT_INSTRUMENTS = [
+        // 2. Seed global instruments (idempotent)
+        const DEFAULT_INSTRUMENTS: Array<{
+          symbol: string; name: string; category: string; currency: string; tickSize: number; contractMultiplier: number | null;
+        }> = [
           { symbol: 'ES', name: 'E-Mini S&P 500', category: 'Futures', currency: 'USD', tickSize: 0.25, contractMultiplier: 50 },
           { symbol: 'NQ', name: 'E-Mini Nasdaq 100', category: 'Futures', currency: 'USD', tickSize: 0.25, contractMultiplier: 20 },
           { symbol: 'GC', name: 'Gold Futures', category: 'Futures', currency: 'USD', tickSize: 0.1, contractMultiplier: 100 },
@@ -27,36 +37,36 @@ if (typeof (client as any).$use === 'function' && !(global as any).__USER_SETTIN
           { symbol: 'EURUSD', name: 'Euro / US Dollar', category: 'Forex', currency: 'USD', tickSize: 0.0001, contractMultiplier: null }
         ];
         for (const inst of DEFAULT_INSTRUMENTS) {
-          // Upsert by unique symbol; ignore update to keep seed stable
-          await client.instrument.upsert({ where: { symbol: inst.symbol }, update: {}, create: inst as any });
+          // upsert ensures idempotency; sequential keeps load trivial at this small list size
+          await client.instrument.upsert({ where: { symbol: inst.symbol }, update: {}, create: inst });
         }
 
-        // 3. Seed user default tags if they don't already have them
-        const DEFAULT_TAGS = [
+        // 3. Seed user default tags if absent
+        const DEFAULT_TAGS: Array<{ label: string; color: string }> = [
           { label: 'Setup:A', color: '#3b82f6' },
-            { label: 'Emotion:FOMO', color: '#ef4444' },
-            { label: 'Playbook:Breakout', color: '#6366f1' }
+          { label: 'Emotion:FOMO', color: '#ef4444' },
+          { label: 'Playbook:Breakout', color: '#6366f1' }
         ];
-        const existing: { label: string }[] = await client.tradeTag.findMany({
+        const existing = await client.tradeTag.findMany({
           where: { userId, label: { in: DEFAULT_TAGS.map(t => t.label) } },
           select: { label: true }
         });
-        const existingLabels = new Set(existing.map((e: { label: string }) => e.label));
+        const existingLabels = new Set(existing.map(e => e.label));
         for (const tag of DEFAULT_TAGS) {
           if (!existingLabels.has(tag.label)) {
             await client.tradeTag.create({ data: { ...tag, userId } });
           }
         }
-      }
-    } catch (e) {
-      // swallow to avoid blocking auth flow; log in dev
-      if (process.env.NODE_ENV !== 'production') {
-        console.warn('Auto settings seed failed', e);
+      } catch (e) {
+        // swallow to avoid blocking auth flow; log in dev
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn('Auto settings seed failed', e);
+        }
       }
     }
     return result;
   });
-  (global as any).__USER_SETTINGS_MW__ = true;
+  global.__USER_SETTINGS_MW__ = true;
 }
 
 export const prisma: PrismaClient = client;

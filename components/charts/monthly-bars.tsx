@@ -15,7 +15,7 @@ export function MonthlyBars({ data }: { data: MonthlyPoint[] }) {
         <BarChart data={data} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
           <XAxis dataKey="month" tick={{ fontSize: 10 }} />
           <YAxis tick={{ fontSize: 10 }} width={50} />
-          <Tooltip formatter={(val:any)=>[val,'P/L']} />
+          <Tooltip formatter={(val: unknown)=>[val as number,'P/L'] as [number,string]} />
           <ReferenceLine y={0} stroke="#666" strokeDasharray="3 3" />
           <Bar dataKey="pnl" fill="#6366f1" radius={[3,3,0,0]} />
         </BarChart>
