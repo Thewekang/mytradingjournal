@@ -37,7 +37,8 @@
   "test:visual": "playwright test -c playwright.config.mjs",
   "test:visual:update": "playwright test -c playwright.config.mjs --update-snapshots",
   "guard:flags": "node scripts/guard-deprecated-flags.mjs",
-  "backup:verify": "node scripts/backup-verify.mjs"
+  "backup:verify": "node scripts/backup-verify.mjs",
+  "cron:test": "node scripts/cron-test.mjs"
   },
   "dependencies": {
     "@next-auth/prisma-adapter": "^1.0.7",

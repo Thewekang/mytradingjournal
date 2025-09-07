@@ -15,8 +15,9 @@ jobs:
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
           CRON_EQUITY_REBUILD_URL: ${{ secrets.CRON_EQUITY_REBUILD_URL }}
+          VERCEL_BYPASS_SECRET: ${{ secrets.VERCEL_BYPASS_SECRET }}
         run: |
-          if [ -n "$CRON_SECRET" ] && [ -n "$CRON_EQUITY_REBUILD_URL" ]; then
+          if [ -n "$CRON_SECRET" ] && [ -n "$CRON_EQUITY_REBUILD_URL" ] && [ -n "$VERCEL_BYPASS_SECRET" ]; then
             echo "ready=true" >> "$GITHUB_OUTPUT"
           else
             echo "ready=false" >> "$GITHUB_OUTPUT"
@@ -31,14 +32,27 @@ jobs:
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
           CRON_EQUITY_REBUILD_URL: ${{ secrets.CRON_EQUITY_REBUILD_URL }}
+          VERCEL_BYPASS_SECRET: ${{ secrets.VERCEL_BYPASS_SECRET }}
         run: |
           if [ -z "$CRON_EQUITY_REBUILD_URL" ]; then
             echo "CRON_EQUITY_REBUILD_URL secret not set" >&2
             exit 1
           fi
-          status=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$CRON_EQUITY_REBUILD_URL" -H "x-cron-secret: $CRON_SECRET")
-          echo "HTTP Status: $status"
+          attempt=1
+          while [ $attempt -le 3 ]; do
+            echo "Attempt $attempt calling $CRON_EQUITY_REBUILD_URL"
+            status=$(curl -s -m 30 -o response.json -w "%{http_code}" -X POST "$CRON_EQUITY_REBUILD_URL" \
+              -H "x-cron-secret: $CRON_SECRET" \
+              -H "x-vercel-protection-bypass: $VERCEL_BYPASS_SECRET")
+            echo "HTTP Status: $status"
+            echo "Response body:" && cat response.json || true
+            if [ "$status" -ge 200 ] && [ "$status" -lt 300 ]; then
+              break
+            fi
+            attempt=$((attempt+1))
+            sleep 3
+          done
           if [ "$status" -lt 200 ] || [ "$status" -ge 300 ]; then
-            echo "Cron call failed with status $status" >&2
+            echo "Cron call failed with status $status after $attempt attempts" >&2
             exit 1
           fi

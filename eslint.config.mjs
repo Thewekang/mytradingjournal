@@ -10,7 +10,7 @@ const namedColors = new Set([
 ]);
 
 function isAllowedFile(filename){
-  return /app[\\/]+globals\.css$/.test(filename) || /tailwind\.config\.(?:[cm]?js)$/.test(filename);
+  return /app[\\/]+globals\.css$/.test(filename) || /tailwind\.config\.(?:[cm]?js)$/.test(filename) || /eslint\.config\.mjs$/.test(filename);
 }
 
 const localPlugin = {
@@ -37,7 +37,7 @@ const localPlugin = {
             return;
           }
           // Any other composite string (spaces, colon, dash, slash, brackets) is ignored to avoid utility class false positives.
-          if (/[\s:/\[\]-]/.test(v)) return;
+          if (/[\s:/[\]-]/.test(v)) return;
           // otherwise leave unflagged (hex caught by separate rule)
         }
         return {
@@ -87,7 +87,22 @@ export default [
   },
   // Allow console usage in scripts utilities
   {
-    files: ['scripts/**/*.mjs'],
-    rules: { 'no-console': 'off' }
+    files: ['scripts/**/*.mjs', 'test-auth.mjs'],
+    rules: { 
+      'no-console': 'off',
+      'no-restricted-syntax': 'off'
+    }
+  },
+  // Allow hex colors in test files for test data
+  {
+    files: ['tests/**/*.ts', 'tests/**/*.tsx'],
+    rules: {
+      'no-restricted-syntax': 'off'
+    }
+  },
+  // Next.js generates next-env.d.ts with triple slash references
+  {
+    files: ['next-env.d.ts'],
+    rules: { '@typescript-eslint/triple-slash-reference': 'off' }
   }
 ];
