@@ -20,7 +20,7 @@ export function FormErrorSummary({ errors, fieldOrder, heading = 'Please fix the
   }, [keys.length]);
   if (!keys.length) return null;
   return (
-    <div ref={ref} role="alert" aria-live="assertive" tabIndex={-1} className="mb-3 p-3 rounded border border-[var(--color-border-strong)] bg-[var(--color-bg-inset)] text-[11px] text-red-300 focus-ring">
+  <div ref={ref} role="alert" aria-live="assertive" tabIndex={-1} className="mb-3 p-3 rounded border border-[var(--color-border-strong)] bg-[var(--color-bg-inset)] text-[11px] text-status-danger focus-ring">
       <p className="font-medium mb-1">{heading}</p>
       <ul className="list-disc pl-4 space-y-0.5">
         {keys.map(k => (
@@ -34,7 +34,7 @@ export function FormErrorSummary({ errors, fieldOrder, heading = 'Please fix the
                   onLinkFocus?.(k);
                 }
               }}
-              className="underline text-red-300 hover:text-red-200 focus-ring rounded px-0.5"
+              className="underline text-status-danger focus-ring rounded px-0.5"
             >{errors[k]}</button>
           </li>
         ))}

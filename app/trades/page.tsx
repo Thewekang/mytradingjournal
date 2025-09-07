@@ -1,4 +1,10 @@
 import { requireUser } from '../../lib/auth';
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Trades • Trading Journal',
+  description: 'Browse, filter, and manage recorded trades.'
+};
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -36,7 +42,7 @@ interface TradeListItem { id: string; instrumentId: string; direction: 'LONG' | 
 function TradesClient({ initial, userEmail }: { initial: { items: TradeListItem[]; nextCursor: string|null }; userEmail: string }) {
   const [items, setItems] = React.useState(initial.items);
   const [loading, setLoading] = React.useState(false);
-  const [form, setForm] = React.useState({ instrumentId: '', direction: 'LONG', entryPrice: '', quantity: '' });
+  const [form, setForm] = React.useState({ instrumentId: '', direction: 'LONG', entryPrice: '', quantity: '', reason: '' });
   const [error, setError] = React.useState<string|null>(null);
   const [allTags, setAllTags] = React.useState<{ id: string; label: string; color: string }[]>([]);
   const [selectedTags, setSelectedTags] = React.useState<string[]>([]);
@@ -51,6 +57,29 @@ function TradesClient({ initial, userEmail }: { initial: { items: TradeListItem[
   const autoLoadingRef = React.useRef(false);
   const [errors, setErrors] = React.useState<Record<string,string>>({});
   const [editErrors, setEditErrors] = React.useState<Record<string,string>>({});
+  // Reason presets (local-only, per-device)
+  const [reasonPresets, setReasonPresets] = React.useState<string[]>([]);
+  const PRESETS_KEY = 'mtj_reason_presets_v1';
+  React.useEffect(() => {
+    try {
+      const raw = typeof window !== 'undefined' ? window.localStorage.getItem(PRESETS_KEY) : null;
+      if (raw) setReasonPresets(Array.isArray(JSON.parse(raw)) ? JSON.parse(raw) : []);
+    } catch { /* ignore localStorage/JSON errors */ }
+  }, []);
+  function savePresets(next: string[]) {
+    const uniq = Array.from(new Set(next.map(s => s.trim()).filter(Boolean))).slice(0, 20);
+    setReasonPresets(uniq);
+  try { if (typeof window !== 'undefined') window.localStorage.setItem(PRESETS_KEY, JSON.stringify(uniq)); } catch { /* ignore quota errors */ }
+  }
+  function addPreset(p: string) {
+    const v = p.trim();
+    if (!v) return;
+    if (v.length > 1000) return; // match reason max length
+    savePresets([v, ...reasonPresets]);
+  }
+  function removePreset(p: string) {
+    savePresets(reasonPresets.filter(x => x !== p));
+  }
 
   React.useEffect(() => {
     fetch('/api/tags').then(r=>r.json()).then(j=>{
@@ -67,12 +96,8 @@ function TradesClient({ initial, userEmail }: { initial: { items: TradeListItem[
   }
 
   function TagChip({ label, color }: { label: string; color: string }) {
-    // simple contrast: if luminance low use white else black
-    const hex = color.replace('#','');
-    const r = parseInt(hex.substring(0,2),16), g = parseInt(hex.substring(2,4),16), b = parseInt(hex.substring(4,6),16);
-    const luminance = (0.299*r + 0.587*g + 0.114*b)/255;
-    const textColor = luminance < 0.55 ? '#fff' : '#000';
-    return <span className="text-[10px] font-medium px-1.5 py-0.5 rounded mr-1 mb-1 inline-block" style={{ background: color, color: textColor }}>{label}</span>;
+    // Using elevation-1 subtle shadow for tag legibility; consider semantic token if specialized.
+    return <span className="text-[10px] font-medium px-1.5 py-0.5 rounded mr-1 mb-1 inline-block text-[var(--color-accent-foreground)] shadow-[var(--elevation-1)]" style={{ background: color }}>{label}</span>;
   }
 
   function validateCreate(values: { instrumentId: string; entryPrice: string; quantity: string }) {
@@ -94,7 +119,8 @@ function TradesClient({ initial, userEmail }: { initial: { items: TradeListItem[
         entryPrice: Number(form.entryPrice),
         quantity: Number(form.quantity),
         entryAt: new Date().toISOString(),
-        tags: selectedTags.length ? selectedTags : undefined
+        tags: selectedTags.length ? selectedTags : undefined,
+        reason: form.reason.trim() ? form.reason.trim() : undefined
       };
       const res = await fetch('/api/trades', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       const json = await res.json();
@@ -108,12 +134,12 @@ function TradesClient({ initial, userEmail }: { initial: { items: TradeListItem[
       if (selectedTags.length) {
         // Rehydrate tag objects for UI display if relation not returned
         created.tags = selectedTags.map(tid => {
-          const tag = allTags.find(t => t.id === tid) || { label: tid, color: '#3b82f6' };
+          const tag = allTags.find(t => t.id === tid) || { label: tid, color: 'var(--color-accent)' };
           return { tagId: tid, tag };
         });
       }
       setItems([created, ...items]);
-      setForm({ instrumentId: '', direction: 'LONG', entryPrice: '', quantity: '' });
+      setForm({ instrumentId: '', direction: 'LONG', entryPrice: '', quantity: '', reason: '' });
       setSelectedTags([]);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed';
@@ -214,7 +240,7 @@ function TradesClient({ initial, userEmail }: { initial: { items: TradeListItem[
       if (!res.ok) throw new Error(json.error?.message || 'Update failed');
       // Merge updated (tags may not include nested tag info if changed; rehydrate from allTags)
       const updated = json.data;
-      updated.tags = (editing.tags || []).map((tid: string) => ({ tagId: tid, tag: allTags.find(t => t.id === tid) || { label: tid, color: '#3b82f6' } }));
+  updated.tags = (editing.tags || []).map((tid: string) => ({ tagId: tid, tag: allTags.find(t => t.id === tid) || { label: tid, color: 'var(--color-accent)' } }));
       setItems(list => list.map(t => t.id === updated.id ? { ...t, ...updated } : t));
       setEditing(null);
     } catch (err) {
@@ -281,7 +307,7 @@ function TradesClient({ initial, userEmail }: { initial: { items: TradeListItem[
         <div className="flex flex-col w-36">
           <label className="text-xs mb-1" htmlFor="instrumentId">Instrument ID</label>
           <input id="instrumentId" className="px-2 py-1 rounded text-sm focus-ring bg-[var(--color-bg-inset)] border border-[var(--color-border-strong)]" value={form.instrumentId} onChange={e=>setForm(f=>({...f, instrumentId: e.target.value}))} required aria-invalid={!!errors.instrumentId} aria-describedby={errors.instrumentId? 'instrumentId-err':undefined} />
-          {errors.instrumentId && <span id="instrumentId-err" className="text-[10px] text-red-400">{errors.instrumentId}</span>}
+          {errors.instrumentId && <span id="instrumentId-err" className="text-[10px] text-[var(--color-danger)]">{errors.instrumentId}</span>}
         </div>
         <div className="flex flex-col w-28">
           <label className="text-xs mb-1" htmlFor="direction">Direction</label>
@@ -293,12 +319,12 @@ function TradesClient({ initial, userEmail }: { initial: { items: TradeListItem[
         <div className="flex flex-col w-24">
           <label className="text-xs mb-1" htmlFor="entryPrice">Entry</label>
           <input id="entryPrice" type="number" step="0.01" className="px-2 py-1 rounded text-sm focus-ring bg-[var(--color-bg-inset)] border border-[var(--color-border-strong)]" value={form.entryPrice} onChange={e=>setForm(f=>({...f, entryPrice: e.target.value}))} required aria-invalid={!!errors.entryPrice} aria-describedby={errors.entryPrice? 'entryPrice-err':undefined} />
-          {errors.entryPrice && <span id="entryPrice-err" className="text-[10px] text-red-400">{errors.entryPrice}</span>}
+          {errors.entryPrice && <span id="entryPrice-err" className="text-[10px] text-[var(--color-danger)]">{errors.entryPrice}</span>}
         </div>
         <div className="flex flex-col w-20">
           <label className="text-xs mb-1" htmlFor="quantity">Qty</label>
           <input id="quantity" type="number" className="px-2 py-1 rounded text-sm focus-ring bg-[var(--color-bg-inset)] border border-[var(--color-border-strong)]" value={form.quantity} onChange={e=>setForm(f=>({...f, quantity: e.target.value}))} required aria-invalid={!!errors.quantity} aria-describedby={errors.quantity? 'quantity-err':undefined} />
-          {errors.quantity && <span id="quantity-err" className="text-[10px] text-red-400">{errors.quantity}</span>}
+          {errors.quantity && <span id="quantity-err" className="text-[10px] text-[var(--color-danger)]">{errors.quantity}</span>}
         </div>
         <div className="flex flex-col">
           <label className="text-xs mb-1" htmlFor="tags-select">Tags</label>
@@ -306,8 +332,26 @@ function TradesClient({ initial, userEmail }: { initial: { items: TradeListItem[
             {allTags.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
           </select>
         </div>
+        <div className="flex flex-col min-w-[16rem] flex-1">
+          <label className="text-xs mb-1" htmlFor="reason">Reason (optional)</label>
+          {/* Presets row */}
+          <div className="flex flex-wrap gap-1 mb-1" aria-label="Reason presets">
+            {reasonPresets.map(p => (
+              <span key={p} className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-[var(--color-bg-inset)] border border-[var(--color-border-strong)]">
+                <button type="button" onClick={()=>setForm(f=>({...f, reason: p}))} className="hover:underline">{p}</button>
+                <button type="button" aria-label={`Remove preset ${p}`} onClick={()=>removePreset(p)} className="opacity-60 hover:opacity-100">×</button>
+              </span>
+            ))}
+            {!reasonPresets.length && <span className="text-[10px] text-[var(--color-muted)]">No presets yet</span>}
+          </div>
+          <textarea id="reason" value={form.reason} onChange={e=>setForm(f=>({...f, reason: e.target.value}))} className="px-2 py-1 rounded text-xs h-12 focus-ring bg-[var(--color-bg-inset)] border border-[var(--color-border-strong)]" placeholder="e.g. Playbook: Breakout; Setup: Pullback; News-driven scalp" />
+          <div className="mt-1 flex gap-2">
+            <button type="button" onClick={()=>addPreset(form.reason)} className="text-[10px] underline disabled:opacity-50" disabled={!form.reason.trim()}>Save as preset</button>
+            <span className="text-[10px] text-[var(--color-muted)]">Presets are saved locally on this device.</span>
+          </div>
+        </div>
         <Button size="sm" variant="solid" loading={loading}>{loading ? 'Saving...' : 'Add Trade'}</Button>
-        {error && <span className="text-xs text-red-400 ml-2" role="alert">{error}</span>}
+        {error && <span className="text-xs text-[var(--color-danger)] ml-2" role="alert">{error}</span>}
       </form>
       </Card>
   <div className="overflow-x-auto rounded bg-[var(--color-bg-muted)] border border-[var(--color-border)]" role="region" aria-label="Trades table">
@@ -333,12 +377,12 @@ function TradesClient({ initial, userEmail }: { initial: { items: TradeListItem[
                 <TD>{t.entryPrice}</TD>
                 <TD>{t.quantity}</TD>
                 <TD>{t.status}</TD>
-                <TD className={t.realizedPnl != null ? (t.realizedPnl >= 0 ? 'text-green-400 font-mono text-xs' : 'text-red-400 font-mono text-xs') : 'font-mono text-xs'}>{t.realizedPnl != null ? t.realizedPnl.toFixed(2) : '-'}</TD>
+                <TD className={t.realizedPnl != null ? (t.realizedPnl >= 0 ? 'pl-positive font-mono text-xs' : 'pl-negative font-mono text-xs') : 'font-mono text-xs'}>{t.realizedPnl != null ? t.realizedPnl.toFixed(2) : '-'}</TD>
                 <TD className="max-w-[160px]">{(t.tags || []).map(rt => rt.tag ? <TagChip key={rt.tagId} label={rt.tag.label} color={rt.tag.color} /> : null)}</TD>
                 <TD className="space-x-2">
-                  {!t.deletedAt && <button onClick={()=>openEdit(t)} className="text-blue-400 hover:underline text-xs">Edit</button>}
-                  {!t.deletedAt && <button onClick={()=>softDelete(t.id)} className="text-red-400 hover:underline text-xs">Delete</button>}
-                  {t.deletedAt && <button onClick={()=>restore(t.id)} className="text-green-400 hover:underline text-xs">Restore</button>}
+                  {!t.deletedAt && <button onClick={()=>openEdit(t)} className="text-[var(--color-accent)] hover:underline text-xs focus-ring rounded px-0.5">Edit</button>}
+                  {!t.deletedAt && <button onClick={()=>softDelete(t.id)} className="text-status-danger hover:underline text-xs focus-ring rounded px-0.5">Delete</button>}
+                  {t.deletedAt && <button onClick={()=>restore(t.id)} className="text-status-success hover:underline text-xs focus-ring rounded px-0.5">Restore</button>}
                 </TD>
               </TR>
             ))}
@@ -359,7 +403,7 @@ function TradesClient({ initial, userEmail }: { initial: { items: TradeListItem[
             <div className="flex gap-2">
               <label className="flex-1" htmlFor="edit-exitPrice">Exit Price
                 <input id="edit-exitPrice" type="number" step="0.01" value={editing.exitPrice} onChange={e=>{const val=e.target.value; setEditing(ed=> ed ? { ...ed, exitPrice: val } : ed); if (editErrors.exitPrice) setEditErrors(er=>({...er, exitPrice: ''}));}} className="mt-1 w-full px-2 py-1 rounded focus-ring bg-[var(--color-bg-inset)] border border-[var(--color-border-strong)]" aria-invalid={!!editErrors.exitPrice} aria-describedby={editErrors.exitPrice? 'edit-exitPrice-err':undefined} />
-                {editErrors.exitPrice && <span id="edit-exitPrice-err" className="text-[10px] text-red-400">{editErrors.exitPrice}</span>}
+                {editErrors.exitPrice && <span id="edit-exitPrice-err" className="text-[10px] text-[var(--color-danger)]">{editErrors.exitPrice}</span>}
               </label>
               <label className="flex-1" htmlFor="edit-status">Status
                 <select id="edit-status" value={editing.status} onChange={e=>{const v = e.target.value as EditingState['status']; setEditing(ed=> ed ? { ...ed, status: v } : ed);}} className="mt-1 w-full px-2 py-1 rounded focus-ring bg-[var(--color-bg-inset)] border border-[var(--color-border-strong)]">
@@ -371,13 +415,27 @@ function TradesClient({ initial, userEmail }: { initial: { items: TradeListItem[
             </div>
             <label className="block" htmlFor="edit-exitAt">Exit At
               <input id="edit-exitAt" type="datetime-local" value={editing.exitAt} onChange={e=>{const val=e.target.value; setEditing(ed=> ed ? { ...ed, exitAt: val } : ed); if (editErrors.exitAt) setEditErrors(er=>({...er, exitAt: ''}));}} className="mt-1 w-full px-2 py-1 rounded focus-ring bg-[var(--color-bg-inset)] border border-[var(--color-border-strong)]" aria-invalid={!!editErrors.exitAt} aria-describedby={editErrors.exitAt? 'edit-exitAt-err':undefined} />
-              {editErrors.exitAt && <span id="edit-exitAt-err" className="text-[10px] text-red-400">{editErrors.exitAt}</span>}
+              {editErrors.exitAt && <span id="edit-exitAt-err" className="text-[10px] text-[var(--color-danger)]">{editErrors.exitAt}</span>}
             </label>
             <label className="block" htmlFor="edit-notes">Notes
               <textarea id="edit-notes" value={editing.notes ?? ''} onChange={e=>{const val=e.target.value; setEditing(ed=> ed ? { ...ed, notes: val } : ed);}} className="mt-1 w-full px-2 py-1 rounded h-16 focus-ring bg-[var(--color-bg-inset)] border border-[var(--color-border-strong)]" />
             </label>
             <label className="block" htmlFor="edit-reason">Reason
-              <textarea id="edit-reason" value={editing.reason ?? ''} onChange={e=>{const val=e.target.value; setEditing(ed=> ed ? { ...ed, reason: val } : ed);}} className="mt-1 w-full px-2 py-1 rounded h-12 focus-ring bg-[var(--color-bg-inset)] border border-[var(--color-border-strong)]" />
+              {/* Presets row */}
+              <div className="mt-1 mb-1 flex flex-wrap gap-1" aria-label="Reason presets">
+                {reasonPresets.map(p => (
+                  <span key={p} className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-[var(--color-bg-inset)] border border-[var(--color-border-strong)]">
+                    <button type="button" onClick={()=>setEditing(ed=> ed ? { ...ed, reason: p } : ed)} className="hover:underline">{p}</button>
+                    <button type="button" aria-label={`Remove preset ${p}`} onClick={()=>removePreset(p)} className="opacity-60 hover:opacity-100">×</button>
+                  </span>
+                ))}
+                {!reasonPresets.length && <span className="text-[10px] text-[var(--color-muted)]">No presets yet</span>}
+              </div>
+              <textarea id="edit-reason" value={editing.reason ?? ''} onChange={e=>{const val=e.target.value; setEditing(ed=> ed ? { ...ed, reason: val } : ed);}} className="w-full px-2 py-1 rounded h-12 focus-ring bg-[var(--color-bg-inset)] border border-[var(--color-border-strong)]" />
+              <div className="mt-1">
+                <button type="button" onClick={()=> editing?.reason && addPreset(editing.reason)} className="text-[10px] underline disabled:opacity-50" disabled={!editing?.reason || !editing.reason.trim()}>Save as preset</button>
+                <span className="ml-2 text-[10px] text-[var(--color-muted)]">Local to this device</span>
+              </div>
             </label>
             <label className="block" htmlFor="edit-lesson">Lesson
               <textarea id="edit-lesson" value={editing.lesson ?? ''} onChange={e=>{const val=e.target.value; setEditing(ed=> ed ? { ...ed, lesson: val } : ed);}} className="mt-1 w-full px-2 py-1 rounded h-12 focus-ring bg-[var(--color-bg-inset)] border border-[var(--color-border-strong)]" />
@@ -389,7 +447,7 @@ function TradesClient({ initial, userEmail }: { initial: { items: TradeListItem[
             </label>
             <div className="flex justify-end gap-2 pt-2">
               <button type="button" onClick={closeEdit} className="px-3 py-1 rounded bg-[var(--color-bg-inset)] border border-[var(--color-border-strong)] hover:bg-[var(--color-bg-muted)]">Cancel</button>
-              <button disabled={savingEdit} className="px-3 py-1 rounded bg-blue-600 hover:bg-blue-500 disabled:opacity-50">{savingEdit ? 'Saving...' : 'Save'}</button>
+              <button disabled={savingEdit} className="px-3 py-1 rounded bg-[var(--color-accent)] hover:bg-[var(--color-accent-hover)] disabled:opacity-50">{savingEdit ? 'Saving...' : 'Save'}</button>
             </div>
           </form>
         )}

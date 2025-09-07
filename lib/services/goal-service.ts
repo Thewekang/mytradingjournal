@@ -59,7 +59,7 @@ export async function recalcGoalsForUser(userId: string) {
   const tradePnls = closedTrades.map((t: TradeRec) => {
     if (t.exitPrice == null) return 0;
     const sign = t.direction === 'LONG' ? 1 : -1;
-    const multiplier = t.instrument?.contractMultiplier ?? 1;
+  const multiplier = (t.instrument?.contractMultiplier && t.instrument.contractMultiplier > 0) ? t.instrument.contractMultiplier : 1;
     return (t.exitPrice - t.entryPrice) * sign * t.quantity * multiplier - (t.fees || 0);
   });
   const totalPnl = tradePnls.reduce((a,b)=>a+b,0);
@@ -82,7 +82,7 @@ export async function recalcGoalsForUser(userId: string) {
     const sum = closedTrades.filter(t=> t.exitAt && t.exitAt.getTime() >= cutoff).map(t=>{
       if (t.exitPrice == null) return 0;
       const sign = t.direction === 'LONG' ? 1 : -1;
-      const multiplier = t.instrument?.contractMultiplier ?? 1;
+  const multiplier = (t.instrument?.contractMultiplier && t.instrument.contractMultiplier > 0) ? t.instrument.contractMultiplier : 1;
       return (t.exitPrice - t.entryPrice) * sign * t.quantity * multiplier - (t.fees || 0);
     }).reduce((a,b)=>a+b,0);
     rollingCache.set(days, sum); return sum;
@@ -94,7 +94,7 @@ export async function recalcGoalsForUser(userId: string) {
     if (t.exitPrice == null) continue;
     const dayKey = t.exitAt ? new Date(t.exitAt).toISOString().substring(0,10) : new Date().toISOString().substring(0,10);
     const sign = t.direction === 'LONG' ? 1 : -1;
-    const multiplier = t.instrument?.contractMultiplier ?? 1;
+  const multiplier = (t.instrument?.contractMultiplier && t.instrument.contractMultiplier > 0) ? t.instrument.contractMultiplier : 1;
     const pnl = (t.exitPrice - t.entryPrice) * sign * t.quantity * multiplier - (t.fees || 0);
     pnlByDay[dayKey] = (pnlByDay[dayKey] || 0) + pnl;
   }

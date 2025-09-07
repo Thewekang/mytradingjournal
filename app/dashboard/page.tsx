@@ -1,8 +1,16 @@
 import { requireUser } from '@/lib/auth';
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Dashboard • Trading Journal',
+  description: 'Key trading metrics, performance summaries, and risk status.'
+};
 import { EquityCurve } from '@/components/charts/equity-curve';
 import { MonthlyBars } from '@/components/charts/monthly-bars';
 import { WinLossDonut } from '@/components/charts/win-loss-donut';
 import { Tooltip } from '@/components/ui/tooltip';
+import { Card } from '@/components/ui/card';
+import { PropEvaluationCard } from '@/components/dashboard/prop-evaluation-card';
 
 async function fetchSummary() {
   const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || ''}/api/analytics/summary`, { cache: 'no-store' });
@@ -83,7 +91,7 @@ export default async function DashboardPage() {
   const totalPnl = points.length ? points[points.length - 1].equity : 0;
   return (
     <div className="space-y-8">
-      <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-4">
+  <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-4">
   <MetricCard label="Total Realized P/L" tooltip="Net realized profit (cumulative closed trade P/L)." value={`RM ${totalPnl.toFixed(2)}`} tone={totalPnl >= 0 ? 'positive' : 'negative'} />
   <MetricCard label="Win Rate" tooltip="Percentage of closed trades with positive P/L." value={summary ? (summary.winRate * 100).toFixed(1) + '%' : '-'} />
   <MetricCard label="Expectancy" tooltip="Average expected value per trade." value={summary ? summary.expectancy.toFixed(2) : '-'} tone={summary && summary.expectancy >= 0 ? 'positive' : summary ? 'negative' : undefined} />
@@ -92,16 +100,20 @@ export default async function DashboardPage() {
   <MetricCard label="Avg Win/Loss Ratio" tooltip="Average winning trade size ÷ average losing trade size." value={summary && summary.avgLoss > 0 ? (summary.avgWin / summary.avgLoss).toFixed(2) : '-'} />
   <MetricCard label="Loss Streak (Cur/Max)" tooltip="Current and historical maximum consecutive losing trades." value={summary ? `${summary.currentConsecutiveLosses}/${summary.maxConsecutiveLosses}` : '-'} />
       </div>
-      <section aria-labelledby="goals-heading" className="mt-4">
+      <section aria-labelledby="prop-eval-heading">
+        <h2 id="prop-eval-heading" className="text-sm font-semibold text-[var(--color-text)]/80 mb-2">Prop Firm Evaluation</h2>
+        <PropEvaluationCard />
+      </section>
+    <section aria-labelledby="goals-heading" className="mt-4">
   <h2 id="goals-heading" className="text-sm font-semibold text-[var(--color-text)]/80 mb-2">Active Goals</h2>
   {goals.length === 0 && <p className="text-xs text-[var(--color-muted)]">No active goals. Create one via API (UI form pending).</p>}
-        <div className="space-y-2">
+    <div className="space-y-2">
           {goals.map((g: GoalRow) => {
             const pct = g.targetValue > 0 ? Math.min(100, (g.currentValue / g.targetValue) * 100) : 0;
             const achieved = g.achievedAt != null;
             const label = g.type === 'TOTAL_PNL' ? 'Total P/L' : g.type === 'TRADE_COUNT' ? 'Trade Count' : 'Win Rate %';
             return (
-              <div key={g.id} className="rounded p-2 bg-[var(--color-bg-muted)] border border-[var(--color-border-strong)]">
+      <Card key={g.id} className="p-3" muted>
                 <div className="flex justify-between text-[11px] mb-1">
                   <span className="text-[var(--color-text)]/80">{label} ({g.period})</span>
                   <span className="text-[var(--color-muted)]">{g.currentValue.toFixed(2)} / {g.targetValue}</span>
@@ -115,10 +127,13 @@ export default async function DashboardPage() {
                   aria-label={`${label} progress`}
                   aria-valuetext={`${pct.toFixed(1)}%`}
                 >
-                  <div className={`h-full ${achieved ? 'bg-green-500' : 'bg-blue-500'}`} style={{ width: pct + '%' }} />
-                </div>
-                {achieved && <p className="text-[10px] text-green-400 mt-1">Achieved</p>}
-              </div>
+                  <div className="h-full transition-colors" style={{
+                    width: pct + '%',
+                    background: achieved ? 'var(--color-success)' : 'var(--color-accent)'
+                  }} />
+        </div>
+        {achieved && <p className="text-[10px] text-status-success mt-1">Achieved</p>}
+      </Card>
             );
           })}
         </div>
@@ -128,34 +143,34 @@ export default async function DashboardPage() {
   {breaches.length === 0 && <p className="text-xs text-[var(--color-muted)]">No breaches logged today.</p>}
         <ul className="space-y-2">
           {breaches.map((b: RiskBreach) => (
-            <li key={b.id} className="rounded p-2 text-[11px] bg-[var(--color-bg-muted)] border border-[var(--color-border-strong)]">
+    <Card key={b.id} className="p-2 text-[11px]" muted>
               <div className="flex justify-between">
-                <span className="font-medium text-red-400">{b.type}</span>
+                <span className="font-medium text-status-danger">{b.type}</span>
                 <time className="text-[var(--color-muted)]" dateTime={b.createdAt}>{new Date(b.createdAt).toLocaleTimeString()}</time>
               </div>
               <p className="text-[var(--color-text)]/80 mt-1">{b.message}</p>
               <p className="text-[var(--color-muted)] mt-1">Value: {b.value.toFixed(2)} / Limit: {b.limit}</p>
-            </li>
+    </Card>
           ))}
         </ul>
       </section>
       <section>
         <h2 className="text-sm font-semibold mb-2">Equity Curve</h2>
-  <div className="rounded-lg p-4 bg-[var(--color-bg-muted)] border border-[var(--color-border)]">
+  <Card className="p-4" muted>
           <EquityCurve points={points} />
           {!points.length && <p className="text-xs text-[var(--color-muted)] mt-2">No closed trades yet.</p>}
-        </div>
+    </Card>
       </section>
       <section>
         <h2 className="text-sm font-semibold mb-2">Monthly Performance (Last 12 Months)</h2>
-  <div className="rounded-lg p-4 bg-[var(--color-bg-muted)] border border-[var(--color-border)]">
+  <Card className="p-4" muted>
           <MonthlyBars data={monthly} />
           {!monthly.length && <p className="text-xs text-[var(--color-muted)] mt-2">No closed trades in range.</p>}
-        </div>
+    </Card>
       </section>
       <section>
         <h2 className="text-sm font-semibold mb-2">Win / Loss Distribution</h2>
-  <div className="rounded-lg p-4 flex flex-col sm:flex-row gap-4 bg-[var(--color-bg-muted)] border border-[var(--color-border)]">
+  <Card className="p-4 flex flex-col sm:flex-row gap-4" muted>
           <div className="flex-1 min-w-[200px]"><WinLossDonut wins={distribution?.wins||0} losses={distribution?.losses||0} breakeven={distribution?.breakeven||0} /></div>
           <ul className="text-xs space-y-1">
             <li><span className="text-[var(--color-muted)]">Wins:</span> {distribution?.wins ?? 0}</li>
@@ -163,38 +178,38 @@ export default async function DashboardPage() {
             <li><span className="text-[var(--color-muted)]">Breakeven:</span> {distribution?.breakeven ?? 0}</li>
             <li><span className="text-[var(--color-muted)]">Win Rate:</span> {distribution ? (distribution.winRate * 100).toFixed(1)+'%' : '-'}</li>
           </ul>
-        </div>
+    </Card>
       </section>
       <section>
         <h2 className="text-sm font-semibold mb-2">Daily P/L (Last 60 Days)</h2>
-  <div className="rounded-lg p-4 overflow-x-auto bg-[var(--color-bg-muted)] border border-[var(--color-border)]">
+  <Card className="p-4 overflow-x-auto" muted>
           <DailyHeatmap days={daily} />
           {!daily.length && <p className="text-xs text-[var(--color-muted)] mt-2">No closed trades in range.</p>}
-        </div>
+    </Card>
       </section>
       <section>
         <h2 className="text-sm font-semibold mb-2">Tag Performance</h2>
-  <div className="rounded-lg p-4 overflow-x-auto bg-[var(--color-bg-muted)] border border-[var(--color-border)]">
+  <Card className="p-4 overflow-x-auto" muted>
           <TagPerformanceTable rows={tagPerf} />
           {!tagPerf.length && <p className="text-xs text-[var(--color-muted)] mt-2">No tagged closed trades.</p>}
-        </div>
+    </Card>
       </section>
     </div>
   );
 }
 
 function MetricCard({ label, value, tone, tooltip }: { label: string; value: string; tone?: 'positive'|'negative'; tooltip?: string }) {
-  const color = tone === 'positive' ? 'text-green-400' : tone === 'negative' ? 'text-red-400' : '';
+  const color = tone === 'positive' ? 'pl-positive' : tone === 'negative' ? 'pl-negative' : '';
   const LabelEl = tooltip ? (
     <Tooltip content={tooltip}>
       <span className="cursor-help inline-block">{label}</span>
     </Tooltip>
   ) : label;
   return (
-    <div className="rounded-lg p-4 flex flex-col gap-2 bg-[var(--color-bg-muted)] border border-[var(--color-border)]">
-  <div className="text-xs uppercase tracking-wide text-[var(--color-muted)]">{LabelEl}</div>
+    <Card className="p-4 flex flex-col gap-2" muted>
+      <div className="text-xs uppercase tracking-wide text-[var(--color-muted)]">{LabelEl}</div>
       <div className={`text-2xl font-semibold ${color}`}>{value}</div>
-    </div>
+    </Card>
   );
 }
 
@@ -213,7 +228,7 @@ function TagPerformanceTable({ rows }: { rows: { tagId: string; label: string; c
       </thead>
       <tbody>
         {rows.map(r => {
-          const tone = r.sumPnl > 0 ? 'text-green-400' : r.sumPnl < 0 ? 'text-red-400' : '';
+          const tone = r.sumPnl > 0 ? 'pl-positive' : r.sumPnl < 0 ? 'pl-negative' : '';
           return (
             <tr key={r.tagId} className="border-t border-[var(--color-border)]">
               <td className="py-1 pr-2"><span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-sm" style={{ background: r.color }}></span>{r.label}</span></td>
@@ -237,7 +252,12 @@ function DailyHeatmap({ days }: { days: { date: string; pnl: number }[] }) {
     <div className="grid grid-cols-7 gap-1 text-[10px]">
       {days.map(d => {
         const intensity = Math.min(1, Math.abs(d.pnl) / maxAbs);
-        const bg = d.pnl > 0 ? `rgba(34,197,94,${0.15 + 0.55*intensity})` : d.pnl < 0 ? `rgba(239,68,68,${0.15 + 0.55*intensity})` : 'rgba(120,120,120,0.15)';
+        const alpha = (0.15 + 0.55*intensity).toFixed(3);
+        const bg = d.pnl > 0
+          ? `color-mix(in srgb, var(--color-success) ${Math.round(Number(alpha)*100)}%, transparent)`
+          : d.pnl < 0
+            ? `color-mix(in srgb, var(--color-danger) ${Math.round(Number(alpha)*100)}%, transparent)`
+            : 'var(--color-overlay-soft)';
         return (
           <Tooltip key={d.date} content={`${d.date}: ${d.pnl.toFixed(2)}`}>
             <div

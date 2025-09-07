@@ -1,0 +1,100 @@
+{
+  "darkBg": "#0a0a0b",
+  "darkAlt": "#141417",
+  "lightBg": "#f8fafc",
+  "lightAlt": "#ffffff",
+  "rows": [
+    {
+      "token": "--color-text",
+      "darkBg": "18.00:1",
+      "darkAlt": "16.73:1",
+      "lightBg": "13.98:1",
+      "lightAlt": "14.63:1"
+    },
+    {
+      "token": "--color-muted",
+      "darkBg": "7.72:1",
+      "darkAlt": "7.17:1",
+      "lightBg": "7.24:1",
+      "lightAlt": "7.58:1"
+    },
+    {
+      "token": "--color-accent",
+      "darkBg": "2.95:1",
+      "darkAlt": "2.74:1",
+      "lightBg": "7.80:1",
+      "lightAlt": "8.16:1"
+    },
+    {
+      "token": "--color-danger",
+      "darkBg": "4.10:1",
+      "darkAlt": "3.81:1",
+      "lightBg": "4.62:1",
+      "lightAlt": "4.83:1"
+    },
+    {
+      "token": "--color-warning",
+      "darkBg": "6.21:1",
+      "darkAlt": "5.77:1",
+      "lightBg": "4.80:1",
+      "lightAlt": "5.02:1"
+    },
+    {
+      "token": "--color-success",
+      "darkBg": "8.69:1",
+      "darkAlt": "8.07:1",
+      "lightBg": "6.81:1",
+      "lightAlt": "7.13:1"
+    },
+    {
+      "token": "--color-info",
+      "darkBg": "4.83:1",
+      "darkAlt": "4.49:1",
+      "lightBg": "7.24:1",
+      "lightAlt": "7.57:1"
+    }
+  ],
+  "interactive": [
+    {
+      "pair": "--color-accent on bg",
+      "dark": "2.95:1",
+      "light": "7.80:1"
+    },
+    {
+      "pair": "--color-accent-foreground on --color-accent",
+      "dark": "6.70:1",
+      "light": "8.16:1"
+    },
+    {
+      "pair": "--color-accent-foreground on --color-accent-hover",
+      "dark": "8.72:1",
+      "light": "9.99:1"
+    },
+    {
+      "pair": "--color-accent-foreground on --color-danger",
+      "dark": "4.83:1",
+      "light": "4.83:1"
+    },
+    {
+      "pair": "--color-accent-foreground on --color-danger-hover",
+      "dark": "6.47:1",
+      "light": "6.47:1"
+    },
+    {
+      "pair": "--color-accent-hover on bg",
+      "dark": "2.27:1",
+      "light": "9.55:1"
+    },
+    {
+      "pair": "--color-disabled-text on --color-disabled-bg",
+      "dark": "2.43:1",
+      "light": "2.08:1"
+    },
+    {
+      "pair": "--color-focus ring vs bg",
+      "dark": "5.38:1",
+      "light": "4.94:1"
+    }
+  ],
+  "generatedAt": "2025-09-07T03:57:54.304Z"
+}

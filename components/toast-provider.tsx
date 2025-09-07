@@ -60,7 +60,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             const icon = t.variant === 'success' ? <CheckCircle2 className="h-4 w-4" /> : t.variant === 'warning' ? <AlertTriangle className="h-4 w-4" /> : t.variant === 'danger' ? <XCircle className="h-4 w-4" /> : <Info className="h-4 w-4" />;
             return (
               <div key={t.id} role={t.variant === 'danger' ? 'alert' : 'status'} aria-live={t.variant === 'danger' ? 'assertive' : 'polite'}>
-                <Alert variant={t.variant || 'info'} heading={<span className="inline-flex items-center gap-2">{icon}{t.heading}</span>} dismissible={t.dismissible} onDismiss={() => dismiss(t.id)} size="sm" className="shadow-lg backdrop-blur bg-opacity-90">
+                <Alert variant={t.variant || 'info'} heading={<span className="inline-flex items-center gap-2">{icon}{t.heading}</span>} dismissible={t.dismissible} onDismiss={() => dismiss(t.id)} size="sm" className="shadow-[var(--elevation-3)] backdrop-blur bg-opacity-90">
                   {t.description}
                 </Alert>
               </div>

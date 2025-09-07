@@ -7,7 +7,7 @@
 
 import { withLogging } from '@/lib/api/logger-wrapper';
 
-async function _GET() {
+async function _GET(req: Request) {
   if (process.env.ENABLE_PDF_EXPORT !== '1') {
     return new Response('PDF export disabled', { status: 501 });
   }
@@ -24,9 +24,13 @@ async function _GET() {
   browser = await chromium.launch();
   interface PdfPage { goto: (url: string, opts: { waitUntil: 'networkidle' }) => Promise<unknown>; addStyleTag: (opts: { content: string }) => Promise<unknown>; pdf: (opts: { format: string; printBackground: boolean }) => Promise<Uint8Array | Buffer> }
   const page = await (browser as { newPage: () => Promise<PdfPage> }).newPage();
-    const base = process.env.APP_BASE_URL || 'http://localhost:3000';
-    await page.goto(base + '/dashboard?print=1', { waitUntil: 'networkidle' });
-    await page.addStyleTag({ content: '@page { margin:12mm; } body { background:white !important; }' });
+  const base = process.env.APP_BASE_URL || 'http://localhost:3000';
+  // Forward any query params from the request to the print page (e.g., ?from=YYYY-MM-DD&to=YYYY-MM-DD)
+  const incoming = new URL(req.url);
+  const url = new URL('/reports/dashboard?print=1', base);
+  incoming.searchParams.forEach((v, k) => { if (k !== 'print') url.searchParams.set(k, v); });
+  await page.goto(url.toString(), { waitUntil: 'networkidle' });
+  await page.addStyleTag({ content: '@page { margin:12mm; } body { background:var(--color-bg-alt) !important; }' });
     const pdfBuffer = await page.pdf({ format: 'A4', printBackground: true });
   const bodyArr = pdfBuffer instanceof Uint8Array ? pdfBuffer : new Uint8Array(pdfBuffer as Buffer);
   const arrBuf = bodyArr instanceof Uint8Array ? bodyArr.slice().buffer : new Uint8Array(bodyArr as unknown as ArrayBufferLike).slice().buffer;

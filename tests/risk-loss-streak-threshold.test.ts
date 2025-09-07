@@ -10,6 +10,7 @@ async function seedUser(threshold: number) {
 }
 
 describe('Configurable loss streak threshold [db]', () => {
+  // Increase timeout to tolerate occasional cold-start latency on CI/Windows
   it('logs breach when loss streak >= configured threshold', async () => {
     const { user, inst } = await seedUser(2); // low threshold for test
     const now = new Date().toISOString();
@@ -20,5 +21,5 @@ describe('Configurable loss streak threshold [db]', () => {
     const streakBreach = breaches.find(b => b.type === 'MAX_CONSECUTIVE_LOSSES');
     expect(streakBreach).toBeTruthy();
     expect(streakBreach?.limit).toBe(2);
-  });
+  }, 20000);
 });

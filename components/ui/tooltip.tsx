@@ -74,6 +74,9 @@ export function Tooltip({ content, delay = 250, id, placement = 'top', children 
     [k: string]: unknown;
   };
   const prevProps: HandlerProps = childEl.props || {} as HandlerProps;
+  const existingClass: string = typeof (childEl.props as Record<string, unknown>).className === 'string'
+    ? (childEl.props as Record<string, unknown>).className as string
+    : '';
   const trigger = React.cloneElement(childEl, {
     ref: (node: HTMLElement) => {
       triggerRef.current = node;
@@ -88,7 +91,8 @@ export function Tooltip({ content, delay = 250, id, placement = 'top', children 
     onBlur: (e: React.FocusEvent) => { prevProps.onBlur?.(e); hide(); },
     onKeyDown: (e: React.KeyboardEvent) => { prevProps.onKeyDown?.(e); handleKey(e); },
     'aria-describedby': visible ? tooltipId.current : undefined,
-    tabIndex: prevProps.tabIndex ?? 0,
+  tabIndex: prevProps.tabIndex ?? 0,
+  className: existingClass.includes('focus-ring') ? existingClass : (existingClass + ' focus-ring').trim(),
   });
 
   return (
@@ -99,7 +103,7 @@ export function Tooltip({ content, delay = 250, id, placement = 'top', children 
           ref={containerRef}
           id={tooltipId.current}
           role="tooltip"
-          className="pointer-events-none fixed z-50 max-w-xs rounded-md px-2 py-1 text-[11px] leading-snug shadow-sm bg-[color:var(--color-bg-muted)] text-[color:var(--color-text)] border border-[color:var(--color-border-strong)] animate-in fade-in duration-150"
+          className="pointer-events-none fixed z-50 max-w-xs rounded-md px-2 py-1 text-[11px] leading-snug shadow-[var(--elevation-3)] bg-[color:var(--color-bg-muted)] text-[color:var(--color-text)] border border-[color:var(--color-border-strong)] animate-in fade-in duration-150"
           style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.4))' }}
         >
           {content}

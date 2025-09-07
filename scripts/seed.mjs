@@ -9,10 +9,13 @@ async function main() {
     console.log('Refusing to seed in production without ALLOW_SEED_PROD=true');
     return;
   }
-  const email = process.env.SEED_USER_EMAIL;
-  const password = process.env.SEED_USER_PASSWORD;
+  // Allow default dev user if env vars are not provided (non-prod only)
+  let email = process.env.SEED_USER_EMAIL;
+  let password = process.env.SEED_USER_PASSWORD;
   if (!email || !password) {
-    console.log('Missing SEED_USER_EMAIL or SEED_USER_PASSWORD; aborting user seed.');
+    email = email || 'admin@example.com';
+    password = password || 'admin123';
+    console.log('Using default dev seed user (admin@example.com / admin123). Provide SEED_USER_EMAIL/SEED_USER_PASSWORD to override.');
   }
   let userId;
   if (email && password) {

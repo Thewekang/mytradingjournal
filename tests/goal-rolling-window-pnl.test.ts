@@ -12,8 +12,11 @@ async function seedUser() {
 
 function daysAgo(n: number) { return new Date(Date.now() - n * 86400000); }
 
-describe('ROLLING_WINDOW_PNL Goal', () => {
-  it('aggregates only trades within custom window (7 days)', async () => {
+describe.sequential('ROLLING_WINDOW_PNL Goal', () => {
+  // These db-backed aggregate recalcs can occasionally exceed the default 5s under full suite load.
+  const LONG_TIMEOUT = 15_000;
+
+  it('aggregates only trades within custom window (7 days)', { timeout: LONG_TIMEOUT }, async () => {
     const { user, inst } = await seedUser();
     // Trades: 10d ago (+50) should be excluded, 6d ago (+40) included, today (+30) included.
     await prisma.trade.create({ data: { userId: user.id, instrumentId: inst.id, direction: 'LONG', entryPrice: 100, exitPrice: 150, quantity: 1, entryAt: daysAgo(10), exitAt: daysAgo(10), status: 'CLOSED', fees: 0 } }); // +50
@@ -28,7 +31,7 @@ describe('ROLLING_WINDOW_PNL Goal', () => {
     expect(updated?.currentValue).toBeLessThan(75);
   });
 
-  it('edge window 1 day only counts today trades', async () => {
+  it('edge window 1 day only counts today trades', { timeout: LONG_TIMEOUT }, async () => {
     const { user, inst } = await seedUser();
     // Trades: yesterday (+25) should be excluded for 1-day window, today (+10) included
     await prisma.trade.create({ data: { userId: user.id, instrumentId: inst.id, direction: 'LONG', entryPrice: 100, exitPrice: 125, quantity: 1, entryAt: daysAgo(1), exitAt: daysAgo(1), status: 'CLOSED', fees: 0 } }); // +25

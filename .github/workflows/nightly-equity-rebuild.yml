@@ -1,0 +1,44 @@
+name: Nightly Equity Rebuild
+
+on:
+  schedule:
+    - cron: '0 3 * * *' # 03:00 UTC nightly
+  workflow_dispatch:
+
+jobs:
+  precheck:
+    runs-on: ubuntu-latest
+    outputs:
+      ready: ${{ steps.check.outputs.ready }}
+    steps:
+      - id: check
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          CRON_EQUITY_REBUILD_URL: ${{ secrets.CRON_EQUITY_REBUILD_URL }}
+        run: |
+          if [ -n "$CRON_SECRET" ] && [ -n "$CRON_EQUITY_REBUILD_URL" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  trigger:
+    needs: precheck
+    if: ${{ needs.precheck.outputs.ready == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call equity rebuild cron endpoint
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          CRON_EQUITY_REBUILD_URL: ${{ secrets.CRON_EQUITY_REBUILD_URL }}
+        run: |
+          if [ -z "$CRON_EQUITY_REBUILD_URL" ]; then
+            echo "CRON_EQUITY_REBUILD_URL secret not set" >&2
+            exit 1
+          fi
+          status=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$CRON_EQUITY_REBUILD_URL" -H "x-cron-secret: $CRON_SECRET")
+          echo "HTTP Status: $status"
+          if [ "$status" -lt 200 ] || [ "$status" -ge 300 ]; then
+            echo "Cron call failed with status $status" >&2
+            exit 1
+          fi

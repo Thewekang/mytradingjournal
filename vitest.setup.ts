@@ -1,6 +1,33 @@
 import { beforeEach } from 'vitest';
+// Provide DOM matchers (toBeInTheDocument, toHaveAttribute, etc.)
+// Vitest does not auto-load @testing-library/jest-dom like Jest, so we import once here.
+import '@testing-library/jest-dom';
 import { act } from 'react';
 import axeCore from 'axe-core';
+// Start export worker early unless running focus-only tests
+try {
+  if (process.env.ENABLE_EXPORTS === '1' && process.env.FOCUS_TEST !== '1') {
+    import('./lib/services/export-job-service').then(m => m.ensureExportWorker?.()).catch(()=>{});
+  }
+} catch { /* ignore */ }
+
+// If running focus-only tests, optional loader-based Prisma stub (prefer alias in vitest.config).
+// Enable only when FOCUS_USE_LOADER_STUB=1 to avoid interfering with alias-based stub.
+if (process.env.FOCUS_TEST === '1' && process.env.FOCUS_USE_LOADER_STUB === '1') {
+  (async () => {
+    try {
+  const mod = await import('module') as unknown as { default?: { _load: (request: string, parent: unknown, isMain: boolean) => unknown }, _load?: (request: string, parent: unknown, isMain: boolean) => unknown };
+  const Module = (mod.default || mod) as { _load: (request: string, parent: unknown, isMain: boolean) => unknown };
+  const origLoad = Module._load.bind(Module);
+  Module._load = function(request: string, parent: unknown, isMain: boolean) {
+        if (request.includes('@prisma/client')) {
+          return { Prisma: {}, $disconnect: async () => {}, $connect: async () => {} };
+        }
+        return origLoad(request, parent, isMain);
+      };
+    } catch { /* ignore */ }
+  })();
+}
 
 // ---------------------------------------------------------------------------
 // Polyfills (must execute before components mount)

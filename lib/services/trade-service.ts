@@ -4,6 +4,9 @@ import { invalidateAnalyticsCache } from '@/lib/analytics-cache';
 import { recalcGoalsForTradeMutation } from './goal-service';
 import { scheduleRiskEvaluation } from './risk-service';
 import { prisma } from '@/lib/prisma';
+import { rebuildDailyEquityFromDate } from './daily-equity-service';
+import { mapPrismaError } from '../errors';
+import type { Prisma } from '@prisma/client';
 
 // Core DTOs exposed by service (strip instrument + internal fields not needed externally)
 export interface TradeCore {
@@ -36,7 +39,7 @@ export interface CreatedTradeResult extends TradeCore {
 export function computeRealizedPnl(t: { entryPrice: number; exitPrice?: number | null; quantity: number; direction: string; fees?: number; contractMultiplier?: number | null }): number | null {
   if (t.exitPrice == null) return null;
   const sign = t.direction === 'LONG' ? 1 : -1;
-  const multiplier = t.contractMultiplier ?? 1;
+  const multiplier = t.contractMultiplier && t.contractMultiplier > 0 ? t.contractMultiplier : 1;
   const gross = (t.exitPrice - t.entryPrice) * sign * t.quantity * multiplier;
   const fees = t.fees ?? 0;
   return +(gross - fees).toFixed(2);
@@ -51,7 +54,29 @@ export async function createTrade(userId: string, input: TradeCreateInput): Prom
     if (riskEval.riskPct > settings.riskPerTradePct) {
       throw new RiskError(`Per-trade risk ${riskEval.riskPct.toFixed(2)}% exceeds limit ${settings.riskPerTradePct}%`, riskEval.riskPct, settings.riskPerTradePct);
     }
+    // If user is in an active Prop Evaluation with maxSingleTradeRisk configured, enforce the tighter of the two caps.
+    // Some environments may not yet have the column applied; if selecting it fails, treat as unsupported and skip.
+    let evalCap: number | undefined;
+    try {
+      const activeEval = await (prisma as unknown as {
+        propEvaluation: { findFirst: (args: { where: { userId: string; status: string }; orderBy: { createdAt: 'desc' }; select: { maxSingleTradeRisk: true } }) => Promise<{ maxSingleTradeRisk?: number } | null> }
+      }).propEvaluation.findFirst({
+        where: { userId, status: 'ACTIVE' },
+        orderBy: { createdAt: 'desc' },
+        select: { maxSingleTradeRisk: true }
+      });
+      evalCap = activeEval?.maxSingleTradeRisk as number | undefined;
+    } catch {
+      evalCap = undefined;
+    }
+    if (typeof evalCap === 'number' && evalCap > 0) {
+      const limit = Math.min(settings.riskPerTradePct, evalCap);
+      if (riskEval.riskPct > limit) {
+        throw new RiskError(`Per-trade risk ${riskEval.riskPct.toFixed(2)}% exceeds prop limit ${limit}%`, riskEval.riskPct, limit);
+      }
+    }
   }
+  try {
   const result = await prisma.$transaction(async (tx) => {
     const trade = await tx.trade.create({
       data: {
@@ -81,7 +106,7 @@ export async function createTrade(userId: string, input: TradeCreateInput): Prom
       fees: trade.fees,
       contractMultiplier: trade.instrument?.contractMultiplier
     });
-    return {
+    const output = {
       id: trade.id,
       userId: trade.userId,
       instrumentId: trade.instrumentId,
@@ -102,11 +127,19 @@ export async function createTrade(userId: string, input: TradeCreateInput): Prom
       deletedAt: trade.deletedAt ?? null,
       realizedPnl
     };
+    return output;
   });
   invalidateAnalyticsCache(userId);
   recalcGoalsForTradeMutation(userId);
   scheduleRiskEvaluation(userId);
+  // Invoke daily equity update AFTER transaction commit to ensure visibility
+  if (result.status === 'CLOSED' && result.exitAt) {
+    rebuildDailyEquityFromDate(userId, result.exitAt).catch(() => { /* non-blocking */ });
+  }
   return result;
+  } catch (e) {
+    throw mapPrismaError(e);
+  }
 }
 
 // Preliminary per-trade risk evaluation (assuming stop distance later; currently uses entryPrice * quantity heuristic placeholder)
@@ -132,10 +165,11 @@ export class RiskError extends Error {
 }
 
 export async function updateTrade(userId: string, id: string, input: TradeUpdateInput): Promise<CreatedTradeResult | null> {
+  try {
   const result = await prisma.$transaction(async (tx) => {
     const existing = await tx.trade.findFirst({ where: { id, userId } });
     if (!existing) return null;
-    const data: Record<string, unknown> = {};
+  const data: Prisma.TradeUpdateInput = {};
     if (input.exitPrice !== undefined) data.exitPrice = input.exitPrice;
     if (input.exitAt) data.exitAt = new Date(input.exitAt);
     if (input.notes !== undefined) data.notes = input.notes;
@@ -157,7 +191,7 @@ export async function updateTrade(userId: string, id: string, input: TradeUpdate
       fees: trade.fees,
       contractMultiplier: trade.instrument?.contractMultiplier
     });
-    return {
+    const output = {
       id: trade.id,
       userId: trade.userId,
       instrumentId: trade.instrumentId,
@@ -178,11 +212,18 @@ export async function updateTrade(userId: string, id: string, input: TradeUpdate
       deletedAt: trade.deletedAt ?? null,
       realizedPnl
     };
+    return output;
   });
   if (result) invalidateAnalyticsCache(userId);
   if (result) recalcGoalsForTradeMutation(userId);
   if (result) scheduleRiskEvaluation(userId);
+  if (result && result.status === 'CLOSED' && result.exitAt) {
+    rebuildDailyEquityFromDate(userId, result.exitAt).catch(() => { /* non-blocking */ });
+  }
   return result;
+  } catch (e) {
+    throw mapPrismaError(e);
+  }
 }
 
 type Dir = z.infer<typeof tradeDirectionEnum>;
@@ -283,7 +324,11 @@ export async function listTrades(userId: string, filters: TradeListFilters): Pro
 export async function deleteTrade(userId: string, id: string): Promise<boolean> {
   const existing = await prisma.trade.findFirst({ where: { id, userId, deletedAt: null } });
   if (!existing) return false;
-  await prisma.trade.update({ where: { id }, data: { deletedAt: new Date(), status: 'CANCELLED' } });
+  try {
+    await prisma.trade.update({ where: { id }, data: { deletedAt: new Date(), status: 'CANCELLED' } });
+  } catch (e) {
+    throw mapPrismaError(e);
+  }
   invalidateAnalyticsCache(userId);
   recalcGoalsForTradeMutation(userId);
   scheduleRiskEvaluation(userId);

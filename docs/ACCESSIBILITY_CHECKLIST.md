@@ -1,12 +1,13 @@
-# Accessibility Checklist (Updated Aug 31 2025)
+# Accessibility Checklist (Updated Sep 7 2025 - Focus & Motion Audit Sync)
 
 Status legend: ✔ Done | ◐ Partial | ✖ Not Started
 
 ## Global
 - ✔ Skip link present (`Skip to content`).
 - ✔ Landmarks: <main>, <nav>, <header>, <footer>.
-- ◐ Color contrast: dark theme AA; light theme audit in progress. Added `--color-border-strong`, `--color-bg-muted`, `--color-bg-inset`, adjusted light theme `--color-muted` for AA small text. Full token contrast matrix TBD.
+- ✔ Color contrast token baseline established (dark + light primary/alt surfaces). Automated audit enforces minima & baseline diff (see scripts/contrast-audit.mjs). Hover/disabled state sweep pending.
 - ✔ Reduced motion support with `prefers-reduced-motion` override.
+- ✔ Automated reduced-motion audit (`scripts/reduced-motion-audit.mjs`) with JSON artifact (`.motion/latest.json`) & allowlist update flag.
 - ✔ Unified focus ring tokens & helper (`--focus-ring-width`, `--focus-ring-offset`, `.focus-ring` class) implemented.
 - ✔ High contrast enhancement via `prefers-contrast: more` media query for focus outlines.
 
@@ -20,7 +21,8 @@ Status legend: ✔ Done | ◐ Partial | ✖ Not Started
 
 ## Forms
 - ✔ Labels associated (explicit `<label>` + `htmlFor`) across settings, trade create, trade edit dialog, and goals form.
-- ◐ Inline validation pattern implemented (settings, trade create/edit, goals). Remaining (future instruments & tag CRUD UI) to adopt pattern & potential form-level summary.
+- ✔ Form-level error summary component (`FormErrorSummary`) with focus redirect + per-field jump links (unit tested).
+- ◐ Inline validation pattern implemented (settings, trade create/edit, goals). Remaining (future instruments & tag CRUD UI) to adopt inline + summary integration.
 
 ## Toasts / Alerts
 - ✔ role=alert / status with polite vs assertive.
@@ -45,11 +47,14 @@ Status legend: ✔ Done | ◐ Partial | ✖ Not Started
 - ✔ Rolling window P/L goals (configurable days) added with labeled window input.
 
 ## Next Steps
-1. Finish light theme contrast audit: validate hover + disabled states for buttons, inputs, progress bars (AA / non-text UI 3:1 guidance) & document matrix.
-2. Add automated contrast & a11y regression (jest-axe / Lighthouse CI) targeting newly introduced surface tokens.
-3. Implement form-level error summary component announced via `role="alert"` / `aria-live` for multi-field errors (e.g., trade edit dialog) while preserving inline field feedback.
-4. Sweep remaining legacy `title` attributes (e.g., confirm none left on charts / dialogs) and replace with Tooltip where semantic explanation is needed.
-5. Add region landmarks or `aria-labelledby` groups for large dashboard sections (Equity, Distribution, Daily P/L, Tag Performance) plus optional “Skip to Goals / Skip to Trades” jump links.
-6. Provide user setting to enable enhanced high-contrast theme variant (toggle that forces strong borders & elevated contrast tokens).
-7. Add keyboard test harness (playwright) to verify tab order & Escape closing for dialogs and tooltips.
-8. Document tooltip usage guidelines (keep under 120 chars, no critical info) in design system.
+1. Finish light theme contrast hover + disabled state audit (buttons, inputs, progress) and append state ratios to `CONTRAST_MATRIX.md`.
+2. Sweep any remaining `title` attributes; replace with Tooltip primitive (verify via repo-wide grep before closing task).
+3. Add region landmarks or `aria-labelledby` wrappers for major dashboard analytic sections + optional jump links.
+4. Playwright keyboard e2e smoke (tabs, dialog, tooltip) – unit-level tests exist; integrate minimal browser pass.
+5. Tooltip usage guidelines & content-length recommendations in design system.
+6. Extend reduced-motion audit to flag cumulative sequential transitions and document allowlist governance.
+
+Completed since last update:
+- High-contrast variant toggle persisted in user settings (plus `prefers-contrast: more` media adjustments).
+
+See also: `docs/ROADMAP.md` Milestone 5a exit criteria for design-system alignment.

@@ -42,6 +42,7 @@ export interface ExportJobDTO {
   id: string; type: string; format: string; status: string; createdAt: number; startedAt?: number; completedAt?: number; error?: string; filename?: string; downloadToken?: string;
   tokenExpiresAt?: number; // epoch ms
   tokenConsumed?: boolean;
+  requestId?: string; // correlation id from originating request if available
 }
 
 export interface ExportJobDetailDTO extends ExportJobDTO { contentType?: string; payloadBase64?: string }

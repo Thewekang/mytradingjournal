@@ -14,7 +14,6 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <title>Trading Journal</title>
         <meta name="description" content="Multi-instrument trading journal & analytics" />
         <meta name="viewport" content="width=device-width,initial-scale=1" />
       </head>
@@ -24,7 +23,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           <div className="flex flex-col min-h-screen">
             <NavBar />
             <RiskBreachBanner />
-            <main id="main" className="flex-1 container mx-auto px-4 py-6 max-w-7xl">{children}</main>
+            <main id="main" className="flex-1 app-container py-6">{children}</main>
             <footer className="text-xs text-[var(--color-muted)] py-6 text-center border-t border-[var(--color-border)]">© {new Date().getFullYear()} Trading Journal</footer>
           </div>
         </Providers>

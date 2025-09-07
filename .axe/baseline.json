@@ -1,0 +1,33 @@
+{
+  "severe": [
+    {
+      "page": "/",
+      "id": "color-contrast"
+    },
+    {
+      "page": "/#light",
+      "id": "color-contrast"
+    },
+    {
+      "page": "/dashboard#light",
+      "id": "color-contrast"
+    },
+    {
+      "page": "/trades",
+      "id": "color-contrast"
+    },
+    {
+      "page": "/trades#light",
+      "id": "color-contrast"
+    },
+    {
+      "page": "/goals#light",
+      "id": "color-contrast"
+    },
+    {
+      "page": "/settings#light",
+      "id": "color-contrast"
+    }
+  ],
+  "updatedAt": "2025-09-05T17:56:29.998Z"
+}

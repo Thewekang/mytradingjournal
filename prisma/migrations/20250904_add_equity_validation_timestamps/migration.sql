@@ -1,0 +1,1 @@
+-- No-op: timestamp fields already present in base schema for reset baseline.

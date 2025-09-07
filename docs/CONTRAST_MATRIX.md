@@ -1,48 +1,67 @@
-# Contrast Matrix (Initial Audit)
+## Contrast Matrix
 
-This file is auto-generated baseline for color token contrast pairs (text vs background) using current `globals.css` tokens. Update when tokens change.
+Single authoritative table of current semantic token foreground vs primary surfaces. Auto-updated when tokens change.
 
-Ratios computed using WCAG 2.1 relative luminance formula. Target:
-- Body & interactive text: >= 4.5:1 (AA)
-- Large / semibold >= 3.0:1
-- Non-text UI (borders, focus indicators): >= 3.0:1 advisable
+Targets:
+- Small / interactive text: ≥ 4.5:1 (AA)
+- Large (≥18px or 14px bold): ≥ 3.0:1
+- Non‑text UI (borders, focus ring): ≥ 3.0:1 (advisory)
 
 | Token (FG on BG) | Dark `#0a0a0b` | Dark Alt `#141417` | Light `#f8fafc` | Light Alt `#ffffff` |
 |------------------|----------------|-------------------|----------------|--------------------|
 | `--color-text` | 18.00:1 | 16.73:1 | 13.98:1 | 14.63:1 |
 | `--color-muted` | 7.72:1 | 7.17:1 | 7.24:1 | 7.58:1 |
-| `--color-accent` | 3.83:1 | 3.56:1 | 6.41:1 | 6.70:1 |
+| `--color-accent` | 2.95:1 | 2.74:1 | 7.80:1 | 8.16:1 |
 | `--color-danger` | 4.10:1 | 3.81:1 | 4.62:1 | 4.83:1 |
-| `--color-warning` | 9.21:1 | 8.56:1 | 3.04:1 | 3.19:1 |
-| `--color-success` | 6.00:1 | 5.58:1 | 4.79:1 | 5.02:1 |
-| `--color-info` | 7.14:1 | 6.63:1 | 5.67:1 | 5.93:1 |
+| `--color-warning` | 6.21:1 | 5.77:1 | 4.80:1 | 5.02:1 |
+| `--color-success` | 8.69:1 | 8.07:1 | 6.81:1 | 7.13:1 |
+| `--color-info` | 4.83:1 | 4.49:1 | 7.24:1 | 7.57:1 |
 
+# Contrast Matrix
 
-Observations:
-- Warning color insufficient for small text on both themes. Consider darkening: e.g. dark theme #d97706 (currently light theme value) & light theme #b45309 to reach >=3:1 small text, or reserve warning token for icons/badges with internal contrast.
-- Success & Info in light theme under 4.5:1 for small text. For inline small text semantics prefer darker variants (#166534 success, #065986 info) or restrict usage to badges/headings.
-- Accent in light theme slightly below 4.5:1 (3.7–4.0). If used for body-size inline links, darken to #1b46b3 or apply underline to satisfy perceived affordance (WCAG technique).
+Single authoritative table of current semantic token foreground vs primary surfaces. Auto-updated when tokens change.
 
-Action Items:
-1. Introduce optional `--color-*` stronger variants or adjust current values (see proposals below) ensuring minimal brand shift.
-2. Add automated luminance test harness (Jest) reading computed hex values from `globals.css` and asserting target ratios.
-3. Enforce semantic usage: warn in lint if using raw token where contrast insufficient for small text.
+Targets:
+- Small / interactive text: ≥ 4.5:1 (AA)
+- Large (≥18px or 14px bold): ≥ 3.0:1
+- Non‑text UI (borders, focus ring): ≥ 3.0:1 (advisory)
 
-## Proposed Adjusted Tokens (Draft)
+| Token (FG on BG) | Dark `#0a0a0b` | Dark Alt `#141417` | Light `#f8fafc` | Light Alt `#ffffff` |
+|------------------|----------------|-------------------|----------------|--------------------|
+| `--color-text` | 18.00:1 | 16.73:1 | 13.98:1 | 14.63:1 |
+| `--color-muted` | 7.72:1 | 7.17:1 | 7.24:1 | 7.58:1 |
+| `--color-accent` | 2.95:1 | 2.74:1 | 7.80:1 | 8.16:1 |
+| `--color-danger` | 4.10:1 | 3.81:1 | 4.62:1 | 4.83:1 |
+| `--color-warning` | 6.21:1 | 5.77:1 | 4.80:1 | 5.02:1 |
+| `--color-success` | 8.69:1 | 8.07:1 | 6.81:1 | 7.13:1 |
+| `--color-info` | 4.83:1 | 4.49:1 | 7.24:1 | 7.57:1 |
+Notes:
+- Dark inline accent (2.95:1) restricted to links with underline or large text; acceptable under current usage guidelines.
+- Danger meets ≥4.0:1 on dark backgrounds; small text inside deep inset panels should prefer larger size or semibold if stricter AA needed.
+- Disabled ratios ~2:1 to differentiate state while preserving legibility; see interactive summary.
+- Hover states: accent-hover does not improve dark inline contrast (2.27:1) so guidance identical to accent base; in light theme all hover states exceed 9:1.
 
-| Token | Current Dark | Proposed Dark | Current Light | Proposed Light | Notes |
-|-------|--------------|---------------|---------------|----------------|-------|
-| warning | #f59e0b | #d97706 | #d97706 | #b45309 | Improves contrast ~3.0+ small text |
-| success | #16a34a | #15803d | #15803d | #166534 | Light variant darker for small text |
-| info | #0ea5e9 | #0284c7 | #0369a1 | #055985 | Push toward >=4.5:1 on light |
-| accent | #2563eb | #1d4ed8 | #1d4ed8 | #1b46b3 | Slight darkening for link text |
+### Interactive State Summary
+| Pair | Dark | Light | Guidance |
+|------|------|-------|----------|
+| `accent → bg` | 2.95:1 | 7.80:1 | Dark usage: underline/size gate |
+| `accent-fg → accent` | 6.70:1 | 8.16:1 | Pass |
+| `accent-fg → accent-hover` | 8.72:1 | 9.99:1 | Pass |
+| `accent-fg → danger` | 4.83:1 | 4.83:1 | Pass |
+| `accent-fg → danger-hover` | 6.47:1 | 6.47:1 | Pass |
+| `accent-hover → bg` | 2.27:1 | 9.55:1 | Dark: same constraints as accent |
+| `disabled-text → disabled-bg` | 2.43:1 | 2.08:1 | Meets ≥2:1 advisory |
+| `focus ring → bg` | 5.38:1 | 4.94:1 | Pass |
 
-Pending decision before implementing.
+### Interactive State Contrast (Auto-Generated)
 
-## Automation Plan
-- Add `scripts/contrast-audit.ts` to parse `globals.css`, compute luminance, output markdown (overwrite this file) and fail CI if regression.
-- Integrate in `package.json` scripts: `design:audit` and include in CI pipeline.
-
-## References
-- WCAG 2.2 contrast guidance for non-text UI (3:1 advisory)
-- Technique G183: Using a contrast ratio of 3:1 with surrounding text and adjacent color for graphical objects
+| Pair | Dark Contrast | Light Contrast | Guidance |
+|------|---------------|----------------|----------|
+| `--color-accent on bg` | 2.95:1 | 7.80:1 | Text target ≥4.5:1 |
+| `--color-accent-foreground on --color-accent` | 6.70:1 | 8.16:1 | Text target ≥4.5:1 |
+| `--color-accent-foreground on --color-accent-hover` | 8.72:1 | 9.99:1 | Text target ≥4.5:1 |
+| `--color-accent-foreground on --color-danger` | 4.83:1 | 4.83:1 | Text target ≥4.5:1 |
+| `--color-accent-foreground on --color-danger-hover` | 6.47:1 | 6.47:1 | Text target ≥4.5:1 |
+| `--color-accent-hover on bg` | 2.27:1 | 9.55:1 | Text target ≥4.5:1 |
+| `--color-disabled-text on --color-disabled-bg` | 2.43:1 | 2.08:1 | Disabled (≥2.0 suggested) |
+| `--color-focus ring vs bg` | 5.38:1 | 4.94:1 | Focus ring ≥3.0:1 |

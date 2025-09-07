@@ -47,21 +47,23 @@ Alternative ASCII:
 - Optimistic concurrency (default). If we add fields likely to collide (e.g. editing notes concurrently), consider a `updatedAt` comparison guard.
 - For high-frequency logging use-case (not expected early), we can introduce a write queue or batch insert.
 
-## 6. Background Jobs (Planned)
+## 6. Background Jobs
 | Job | Trigger | Purpose |
 |-----|--------|---------|
-| Daily Metrics Rebuild | Cron (UTC 00:05) | Pre-compute daily P/L & drawdown | 
+| Equity Rebuild (global) | Cron (nightly) via `POST /api/cron/equity-rebuild` | Pre-compute daily equity/PnL for all users |
+| Equity Rebuild (per-user) | On-demand via `POST /api/cron/equity-rebuild-user` | Targeted recompute for a user/date window |
+| Export Perf Prune | Cron (hourly/daily) via `POST /api/cron/export-perf-prune` | Trim export performance samples table |
+| Backup Verify | Cron (weekly) via `GET /api/cron/backup-verify` | Sanity-check entity counts and sample data |
 | PDF Report Generation | User request (async) | Offload heavy PDF build |
-| Data Retention Cleanup | Weekly | Archive soft-deleted trades |
 
-Queue options (future): lightweight (in-memory + fallback) or external (Upstash Redis / Cloud task queue).
+Queue options (scaling): external worker or managed queue (e.g., Redis/BullMQ) if throughput grows; current implementation runs in-process with persistence.
 
 ## 7. Observability Plan
 | Instrumentation | Tool | Notes |
 |-----------------|------|------|
 | Error Tracking | Sentry | DSN via env |
 | Metrics (latency) | OpenTelemetry exporter -> vendor | Minimal spans around service boundaries |
-| Structured Logs | pino | JSON for shipping |
+| Structured Logs | pino | JSON for shipping; include `reqId` for request correlation (echoed as `x-request-id` header) |
 
 ## 8. Security Model
 | Concern | Approach |
@@ -109,4 +111,15 @@ Queue options (future): lightweight (in-memory + fallback) or external (Upstash 
 ### Appendix A: Goal Recalculation Caching
 Current implementation debounces recalculation (500ms) and constructs a cached Map of rolling window sums keyed by windowDays to avoid repeated filtering when multiple rolling goals are present in the same pass. Future: daily aggregate table for O(1) window queries.
 
-_Last updated: 2025-08-31 (risk engine v1 + rolling goals)_
+### Appendix B: FX Service (Raw SQL Exception)
+While services generally access the DB through Prisma, the FX rate lookup/write path intentionally uses raw SQL to avoid initializing the Prisma query engine during unit tests and to reduce file-lock friction on Windows.
+- Source: `lib/services/fx-service.ts`
+- Strategy: DB-first lookup with in-memory cache; previous business-day fallback (up to 5 days); fetch via Frankfurter (ECB EOD) and upsert.
+- Rollout: gated by `ENABLE_FX_CONVERSION` and backed by an admin/shared-secret cron endpoint for backfills.
+
+### Appendix C: Exports Queue Instrumentation & Correlation
+Persistent export jobs capture performance samples in a lightweight table (created best-effort via raw SQL) and correlate logs end-to-end using `requestId`.
+- Endpoints: `/api/exports/jobs`, `/api/exports/jobs/:id`, `/api/exports/jobs/:id/download`, `/api/exports/jobs/perf`.
+- Memory guard: streaming CSV path uses an async generator and a soft memory limit; terminal classification prevents wasteful retries.
+
+_Last updated: 2025-09-07 (cron endpoints concretized; request correlation note)_

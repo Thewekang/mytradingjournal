@@ -2,6 +2,7 @@ import { getSessionUser } from '@/lib/session';
 import { prisma } from '@/lib/prisma';
 import { computeRealizedPnl } from '@/lib/services/trade-service';
 import { rowsToCsvStream } from '@/lib/export/csv';
+import { getFxRate, convertAmount } from '@/lib/services/fx-service';
 
 export async function GET(request: Request){
   const user = await getSessionUser();
@@ -11,14 +12,20 @@ export async function GET(request: Request){
   const daysParam = searchParams.get('days');
   const days = Math.min(365, Math.max(1, daysParam? parseInt(daysParam,10): 60));
   const since = new Date(Date.now()-days*86400000);
-  const trades = await prisma.trade.findMany({ where:{ userId: user.id, status:'CLOSED', deletedAt:null, exitAt:{ not:null, gte: since } }, orderBy:{ exitAt:'asc' }, include:{ instrument:{ select:{ contractMultiplier:true } } }});
+  const trades = await prisma.trade.findMany({ where:{ userId: user.id, status:'CLOSED', deletedAt:null, exitAt:{ not:null, gte: since } }, orderBy:{ exitAt:'asc' }, include:{ instrument:{ select:{ contractMultiplier:true, currency:true } } }});
+  const settings = await prisma.journalSettings.findUnique({ where: { userId: user.id } });
+  const ENABLE_FX = process.env.ENABLE_FX_CONVERSION === '1';
   const daily: Record<string, number> = {};
   for(const t of trades){
     if(!t.exitAt) continue;
   const pnl = computeRealizedPnl({ entryPrice:t.entryPrice, exitPrice:t.exitPrice??undefined, quantity:t.quantity, direction:t.direction, fees:t.fees, contractMultiplier:t.instrument?.contractMultiplier ?? undefined });
     if(pnl==null) continue;
+    const base = settings?.baseCurrency || 'USD';
+    const quote = t.instrument?.currency || base;
+    const rate = ENABLE_FX ? await getFxRate(t.exitAt.toISOString().slice(0,10), quote, base) : null;
+    const pnlConv = convertAmount(pnl, rate);
     const key = t.exitAt.toISOString().slice(0,10);
-    daily[key] = (daily[key]||0)+pnl;
+    daily[key] = (daily[key]||0)+pnlConv;
   }
   const rows = Object.entries(daily).sort((a,b)=>a[0].localeCompare(b[0])).map(([date,pnl])=>({ date, pnl:+pnl.toFixed(2) }));
   if(format==='json') return new Response(JSON.stringify({ columns:['date','pnl'], rows }),{status:200, headers:{'Content-Type':'application/json'}});

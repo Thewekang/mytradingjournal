@@ -36,15 +36,15 @@ export function NavBar() {
   const toggleTheme = () => setTheme(t => t === 'dark' ? 'light' : 'dark');
   return (
   <header className="sticky top-0 z-40 border-b border-[var(--color-border)] bg-[var(--color-bg)]/80 backdrop-blur">
-      <nav className="container flex items-center gap-6 py-3 text-sm">
+      <nav className="container flex items-center gap-6 py-3 text-sm" aria-label="Primary">
         <div className="font-semibold tracking-wide flex items-center gap-2">
-          <Activity className="h-4 w-4 text-blue-500" />
+          <Activity className="h-4 w-4 text-[var(--color-accent)]" />
           Trading Journal
         </div>
-        <ul className="flex gap-4 flex-1">
-          {links.map(l => (
-            <li key={l.href}>
-              <Link href={l.href} className={`flex items-center gap-1 px-3 py-1 rounded-md transition-colors focus-ring ${pathname === l.href ? 'bg-[var(--color-bg-muted)] text-[var(--color-text)]' : 'text-[var(--color-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-bg-muted)]/60'}`}>
+    <ul className="flex gap-4 flex-1">
+      {links.map(l => (
+    <li key={l.href}>
+  <Link href={l.href} aria-current={pathname === l.href ? 'page' : undefined} className={`flex items-center gap-1 px-3 py-1 rounded-md transition-colors focus-ring ${pathname === l.href ? 'bg-[var(--color-bg-muted)] text-[var(--color-text)]' : 'text-[var(--color-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-bg-muted)]/60'}`}>
                 {l.icon && <l.icon className="h-3.5 w-3.5" />}
                 {l.label}
               </Link>

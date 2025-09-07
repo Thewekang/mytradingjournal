@@ -1,4 +1,5 @@
-import { withContext } from '@/lib/logger';
+import { withContext as _withContext, logger } from '@/lib/logger';
+import { initObservability, withObservabilityScope, captureException } from '@/lib/observability';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth-options';
 
@@ -18,6 +19,7 @@ export function jsonError(error: { code: string; message: string; details?: unkn
  */
 export function withLogging<T extends (...args: any[]) => Promise<Response>>(handler: T, route: string) { // eslint-disable-line @typescript-eslint/no-explicit-any
   return async (...args: Parameters<T>): Promise<Response> => {
+  await initObservability();
     const start = Date.now();
     const req: Request = args[0] as unknown as Request;
     const reqId = req.headers.get('x-request-id') || 'no-rid';
@@ -26,16 +28,21 @@ export function withLogging<T extends (...args: any[]) => Promise<Response>>(han
       const session = await getServerSession(authOptions); // lightweight; already cached per request in Next
       userId = (session?.user as { id?: string } | undefined)?.id;
     } catch {/* ignore */}
-    const log = withContext({ reqId, userId, route });
+  // Defensive: some test module loading edge cases produced a non-function import; fallback directly to logger.child
+  const withContextFn = typeof _withContext === 'function' ? _withContext : ((ctx: { reqId?: string; userId?: string; route?: string }) => logger.child(ctx));
+  const log = withContextFn({ reqId, userId, route });
     log.debug({ method: req.method, url: req.url }, 'request.start');
     try {
-      const res = await handler(...args);
+  const res = await withObservabilityScope({ reqId, userId, route }, async () => await handler(...args));
       const dur = Date.now() - start;
       log.info({ status: res.status, dur }, 'request.finish');
-      return res;
+  // Ensure correlation header is present on all responses
+  try { res.headers.set('x-request-id', reqId); } catch {/* ignore header set failure */}
+  return res;
     } catch (e) {
       const dur = Date.now() - start;
       log.error({ err: (e as Error).message, stack: (e as Error).stack, dur }, 'request.error');
+      captureException(e, { reqId, userId, route });
       return new Response(JSON.stringify({ data: null, error: { code: 'INTERNAL', message: 'Internal error' } }), { status: 500, headers: { 'Content-Type': 'application/json', 'x-request-id': reqId } });
     }
   };

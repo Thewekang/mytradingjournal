@@ -8,6 +8,21 @@
   --radius-xs: 2px;
   --radius-sm: 4px;
   --radius-lg: 0.875rem;
+  /* spacing scale (4px baseline) */
+  --space-0: 0px;
+  --space-2: 2px; /* fine */
+  --space-4: 4px; /* 1x */
+  --space-6: 6px; /* 1.5x */
+  --space-8: 8px; /* 2x */
+  --space-12: 12px; /* 3x */
+  --space-16: 16px; /* 4x */
+  --space-20: 20px; /* 5x */
+  --space-24: 24px; /* 6x */
+  --space-32: 32px; /* 8x */
+  --space-40: 40px; /* 10x */
+  --space-48: 48px; /* 12x */
+  --space-56: 56px; /* 14x */
+  --space-64: 64px; /* 16x */
   --color-bg: #0a0a0b;
   --color-bg-alt: #141417;
   --color-border: #27272a;
@@ -18,24 +33,73 @@
   --color-bg-inset: #101013;
   --color-text: #f4f4f5;
   --color-muted: #a1a1aa;
-  --color-accent: #2563eb;
+  /* Adjusted accent (slightly darker for improved contrast esp. on light theme parity) */
+  --color-accent: #1d4ed8;
   --color-accent-foreground: #ffffff;
+  --color-accent-hover: #1e40af;
+  /* Revert danger to darker original for >=4.5:1 contrast with white text */
   --color-danger: #dc2626;
-  --color-warning: #f59e0b;
-  --color-success: #16a34a;
-  --color-info: #0ea5e9;
+  --color-danger-hover: #b91c1c;
+  /* Darkened warning/success/info for >=3:1 (warning) & >=4.5:1 (success/info) small text scenarios */
+  --color-warning: #d97706;
+  --color-success: #22c55e; /* brighter for AA on dark bg */
+  --color-info: #0284c7;
   --color-focus: #3b82f6;
+  /* disabled */
+  --color-disabled-bg: #1e1e22;
+  --color-disabled-border: #323238;
+  --color-disabled-text: #5a5a62;
+  /* overlay / backdrop / transient surfaces */
+  --color-overlay-soft: rgba(120 120 120 / 0.15);
+  --color-backdrop: rgba(0 0 0 / 0.60);
+  /* spinner track & semantic borders */
+  --color-spinner-track: rgba(255 255 255 / 0.40);
+  --color-danger-border: var(--color-danger);
+  --color-danger-ring: var(--color-danger);
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.5);
   --shadow: 0 2px 6px -1px rgb(0 0 0 / 0.55), 0 4px 12px -2px rgb(0 0 0 / 0.3);
   --shadow-lg: 0 6px 18px -4px rgb(0 0 0 / 0.6), 0 10px 30px -2px rgb(0 0 0 / 0.4);
+  /* elevation mapping */
+  --elevation-0: none;
+  --elevation-1: var(--shadow-sm);
+  --elevation-2: var(--shadow);
+  --elevation-3: var(--shadow-lg);
+  /* typography */
+  --font-sans: system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-md: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --line-tight: 1.15;
+  --line-snug: 1.25;
+  --line-normal: 1.5;
+  --line-relaxed: 1.65;
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
   --dur-fast: 120ms;
   --dur: 200ms;
   --dur-slow: 320ms;
   --ease: cubic-bezier(.4,0,.2,1);
+  --ease-spring: cubic-bezier(.33,1,.68,1);
   /* Focus ring tokens */
   --focus-ring-width: 2px;
   --focus-ring-offset: 2px;
   --focus-ring-shadow: 0 0 0 var(--focus-ring-width) var(--color-focus);
+  /* semantic status foreground tokens (mapped to existing semantic colors) */
+  --color-fg-success: var(--color-success);
+  --color-fg-danger: var(--color-danger);
+  --color-fg-warning: var(--color-warning);
+  --color-fg-info: var(--color-info);
+  /* chart palette tokens */
+  --color-chart-positive: var(--color-success);
+  --color-chart-negative: var(--color-danger);
+  --color-chart-neutral: var(--color-muted);
+  --color-chart-accent: var(--color-accent);
 }
 
 /* light theme (data-theme="light" or system preference) */
@@ -50,13 +114,24 @@
   --color-text: #1e293b;
   /* Adjusted muted color for improved contrast on light backgrounds (WCAG AA for small text) */
   --color-muted: #475569; /* was #64748b */
-  --color-accent: #1d4ed8;
+  /* Light theme accent slightly darkened for link/body text contrast */
+  --color-accent: #1b46b3;
   --color-accent-foreground: #ffffff;
+  --color-accent-hover: #173b96;
   --color-danger: #dc2626;
-  --color-warning: #d97706;
-  --color-success: #15803d;
-  --color-info: #0369a1;
+  --color-danger-hover: #b91c1c;
+  --color-warning: #b45309;
+  --color-success: #166534;
+  --color-info: #055985;
   --color-focus: #2563eb;
+  --color-disabled-bg: #e2e8f0;
+  --color-disabled-border: #cbd5e1;
+  --color-disabled-text: #94a3b8;
+  --color-overlay-soft: rgba(120 120 120 / 0.15);
+  --color-backdrop: rgba(0 0 0 / 0.40);
+  --color-spinner-track: rgba(0 0 0 / 0.25);
+  --color-danger-border: var(--color-danger);
+  --color-danger-ring: var(--color-danger);
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.06);
   --shadow: 0 2px 6px -1px rgb(0 0 0 / 0.08), 0 4px 12px -2px rgb(0 0 0 / 0.04);
   --shadow-lg: 0 6px 18px -4px rgb(0 0 0 / 0.1), 0 10px 30px -2px rgb(0 0 0 / 0.06);
@@ -73,13 +148,18 @@
   --color-bg-inset: #f1f5f9;
     --color-text: #1e293b;
   --color-muted: #475569; /* sync with manual light theme token */
-    --color-accent: #1d4ed8;
+  --color-accent: #1b46b3;
     --color-accent-foreground: #ffffff;
-    --color-danger: #dc2626;
-    --color-warning: #d97706;
-    --color-success: #15803d;
-    --color-info: #0369a1;
+  --color-accent-hover: #173b96;
+  --color-danger: #dc2626;
+  --color-danger-hover: #b91c1c;
+  --color-warning: #b45309;
+  --color-success: #166534;
+  --color-info: #055985;
     --color-focus: #2563eb;
+  --color-disabled-bg: #e2e8f0;
+  --color-disabled-border: #cbd5e1;
+  --color-disabled-text: #94a3b8;
     --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.06);
     --shadow: 0 2px 6px -1px rgb(0 0 0 / 0.08), 0 4px 12px -2px rgb(0 0 0 / 0.04);
     --shadow-lg: 0 6px 18px -4px rgb(0 0 0 / 0.1), 0 10px 30px -2px rgb(0 0 0 / 0.06);
@@ -119,9 +199,33 @@ body {
 [data-theme="light"] .scrollbar-thin::-webkit-scrollbar-thumb { background-color: #cbd5e1; }
 
 @media (prefers-reduced-motion: reduce) {
+  /* Minimize motion while preserving essential visibility transitions */
   *, *::before, *::after {
-    animation-duration: 0.001ms !important;
-    animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
   }
+  /* Explicitly pause purely decorative animations */
+  /* Utility class forms produced by Tailwind's arbitrary values are hard to target literally.
+     Instead pause by animation-name to avoid brittle selectors. */
+  [style*="skeleton"],
+  [style*="progress-bar"],
+  .skeleton-shimmer,
+  .progress-indeterminate {
+    animation: none !important;
+  }
 }
+
+/* Semantic status text utility classes (avoid raw tailwind color literals) */
+.text-status-success { color: var(--color-fg-success); }
+.text-status-danger { color: var(--color-fg-danger); }
+.text-status-warning { color: var(--color-fg-warning); }
+.text-status-info { color: var(--color-fg-info); }
+
+/* Utility for positive/negative P/L with fallback to success/danger */
+.pl-positive { color: var(--color-success); }
+.pl-negative { color: var(--color-danger); }
+
+/* skeleton shimmer */
+@keyframes skeleton { 0% { transform: translateX(-100%);} 100% { transform: translateX(100%);} }
+
+/* progress indeterminate */
+@keyframes progress-bar { 0% { left: -40%; width: 40%; } 50% { left: 20%; width: 60%; } 100% { left: 100%; width: 40%; } }

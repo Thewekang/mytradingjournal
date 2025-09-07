@@ -1,4 +1,10 @@
 import { requireUser } from '@/lib/auth';
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Settings • Trading Journal',
+  description: 'Manage risk parameters, account preferences, and base configuration.'
+};
 import React from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -30,6 +36,7 @@ function SettingsClient({ initial }: { initial: SettingsData | null }) {
     maxConsecutiveLossesThreshold: (initial?.maxConsecutiveLossesThreshold ?? 5).toString(),
     timezone: initial?.timezone ?? 'UTC'
   });
+  const [locale, setLocale] = React.useState<string>('en-US');
   const [saving, setSaving] = React.useState(false);
   const [msg, setMsg] = React.useState<string|null>(null);
   const [err, setErr] = React.useState<string|null>(null);
@@ -38,8 +45,6 @@ function SettingsClient({ initial }: { initial: SettingsData | null }) {
 
   function validate() {
     const e: Record<string,string> = {};
-    const numFields = ['riskPerTradePct','maxDailyLossPct','initialEquity','maxConsecutiveLossesThreshold'] as const;
-  numFields.forEach(f => { const v = Number((form as Record<string,string>)[f]); if (isNaN(v) || v < 0) e[f] = 'Must be a positive number'; });
     setErrors(e); return Object.keys(e).length === 0;
   }
   async function save(e: React.FormEvent) {
@@ -52,7 +57,7 @@ function SettingsClient({ initial }: { initial: SettingsData | null }) {
       const res = await fetch('/api/settings', { method: 'PATCH', headers: { 'Content-Type':'application/json' }, body: JSON.stringify(payload) });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error?.message || 'Save failed');
-      setMsg('Saved');
+  setMsg('Saved');
       toast.push({ variant: 'success', heading: 'Settings Saved', description: 'Your settings have been updated.' });
   } catch (e) { const msg = e instanceof Error ? e.message : 'Save failed'; setErr(msg); toast.push({ variant: 'danger', heading: 'Save Failed', description: msg }); }
     finally { setSaving(false); }
@@ -65,7 +70,7 @@ function SettingsClient({ initial }: { initial: SettingsData | null }) {
       <label className="flex flex-col text-xs gap-1" key={name} htmlFor={id}>
         <span className="font-medium">{label}</span>
   <Input id={id} aria-describedby={errMsg ? id+'-err' : undefined} type={type} step={step} fieldSize="md" variant="inset" invalid={!!errMsg} value={(form as Record<string,string>)[name]} onChange={e=>setForm(f=>({...f, [name]: e.target.value}))} />
-        {errMsg && <span id={id+'-err'} className="text-[10px] text-red-400">{errMsg}</span>}
+        {errMsg && <span id={id+'-err'} className="text-[10px] text-[var(--color-danger)]">{errMsg}</span>}
       </label>
     );
   }
@@ -81,10 +86,17 @@ function SettingsClient({ initial }: { initial: SettingsData | null }) {
         {field('maxDailyLossPct','Max Daily Loss %','number','0.01')}
         {field('initialEquity','Initial Equity','number','1')}
         {field('maxConsecutiveLossesThreshold','Max Loss Streak','number','1')}
+        <div className="flex flex-col text-xs gap-1">
+          <span className="font-medium">Locale (display)</span>
+          <select className="border rounded p-1" value={locale} onChange={(e)=>{ setLocale(e.target.value); try { document.cookie = `locale=${encodeURIComponent(e.target.value)}; path=/; max-age=${60*60*24*365}`; } catch { /* ignore */ } }}>
+            <option value="en-US">English (US)</option>
+          </select>
+          <span className="text-[10px] text-[var(--color-muted)]">Affects number and date formatting.</span>
+        </div>
         <div className="md:col-span-2 lg:col-span-3 flex items-center gap-3 pt-2">
           <Button size="sm" variant="solid" disabled={saving} loading={saving}>{saving ? 'Saving...' : 'Save'}</Button>
-          {msg && <span className="text-green-400">{msg}</span>}
-          {err && <span className="text-red-400">{err}</span>}
+          {msg && <span className="text-status-success">{msg}</span>}
+          {err && <span className="text-status-danger">{err}</span>}
         </div>
       </form>
       </Card>

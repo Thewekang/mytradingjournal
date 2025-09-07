@@ -27,7 +27,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(function Inp
         'border-[var(--color-border-strong)]',
         'placeholder:text-[var(--color-muted)]',
   sizeMap[fieldSize],
-        invalid && 'outline-none ring-1 ring-red-500 border-red-500',
+  invalid && 'outline-none focus-ring ring-1 ring-[var(--color-danger-ring)] border-[var(--color-danger-border)]',
         disabled && 'opacity-60 cursor-not-allowed',
         className
       )}

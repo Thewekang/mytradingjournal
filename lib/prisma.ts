@@ -42,10 +42,11 @@ if (!global.__USER_SETTINGS_MW__ && typeof (client as unknown as { $use?: unknow
         }
 
         // 3. Seed user default tags if absent
+        // Store semantic token identifiers instead of raw hex; UI layer interprets 'token:--color-*' to CSS var.
         const DEFAULT_TAGS: Array<{ label: string; color: string }> = [
-          { label: 'Setup:A', color: '#3b82f6' },
-          { label: 'Emotion:FOMO', color: '#ef4444' },
-          { label: 'Playbook:Breakout', color: '#6366f1' }
+          { label: 'Setup:A', color: 'token:--color-accent' },
+          { label: 'Emotion:FOMO', color: 'token:--color-danger' },
+          { label: 'Playbook:Breakout', color: 'token:--color-info' }
         ];
         const existing = await client.tradeTag.findMany({
           where: { userId, label: { in: DEFAULT_TAGS.map(t => t.label) } },

@@ -47,5 +47,20 @@ export const authOptions: NextAuthOptions = {
       }
       return session;
     }
+  },
+  events: {
+    // Auto-create baseline JournalSettings on new user registration
+    async createUser(message) {
+      try {
+        const created = message.user as User & { id: string };
+        await prisma.journalSettings.upsert({
+          where: { userId: created.id },
+          update: {},
+          create: { userId: created.id }
+        });
+      } catch {
+        // non-blocking; settings can be created lazily elsewhere if needed
+      }
+    }
   }
 };

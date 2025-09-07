@@ -4,7 +4,7 @@ import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 
 interface DistProps { wins: number; losses: number; breakeven: number }
 
-const COLORS = { wins: '#16a34a', losses: '#dc2626', breakeven: '#737373' };
+const COLORS = { wins: 'var(--color-chart-positive)', losses: 'var(--color-chart-negative)', breakeven: 'var(--color-chart-neutral)' };
 
 export function WinLossDonut({ wins, losses, breakeven }: DistProps) {
   const titleId = React.useId();

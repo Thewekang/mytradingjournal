@@ -18,7 +18,7 @@ function calcRealizedPnl(trades: { exitPrice: number | null; entryPrice: number;
   return trades.reduce((sum, t) => {
     if (t.exitPrice == null) return sum;
     const sign = t.direction === 'LONG' ? 1 : -1;
-    const mult = t.instrument?.contractMultiplier ?? 1;
+  const mult = (t.instrument?.contractMultiplier && t.instrument.contractMultiplier > 0) ? t.instrument.contractMultiplier : 1;
     const pnl = (t.exitPrice - t.entryPrice) * sign * t.quantity * mult - (t.fees || 0);
     return sum + pnl;
   }, 0);
@@ -48,7 +48,7 @@ export async function evaluateRiskForUser(userId: string): Promise<RiskBreach[]>
   let currentLossStreak = 0; let maxLossStreak = 0;
   for (const t of ordered) {
     const sign = t.direction === 'LONG' ? 1 : -1;
-    const mult = t.instrument?.contractMultiplier ?? 1;
+  const mult = (t.instrument?.contractMultiplier && t.instrument.contractMultiplier > 0) ? t.instrument.contractMultiplier : 1;
     const pnl = (t.exitPrice! - t.entryPrice) * sign * t.quantity * mult - (t.fees||0);
     if (pnl < 0) { currentLossStreak++; maxLossStreak = Math.max(maxLossStreak, currentLossStreak); } else { currentLossStreak = 0; }
   }

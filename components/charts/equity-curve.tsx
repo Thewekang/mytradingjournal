@@ -16,8 +16,8 @@ export function EquityCurve({ points }: { points: EquityPoint[] }) {
           <XAxis dataKey="time" hide />
             <YAxis domain={['dataMin', 'dataMax']} tick={{ fontSize: 10 }} width={50} />
             <Tooltip formatter={(val: unknown, name: string)=>[val as number, name] as [number,string]} labelFormatter={(l)=>new Date(l).toLocaleString()} />
-            <ReferenceLine y={0} stroke="#666" strokeDasharray="3 3" />
-            <Line type="monotone" dataKey="equity" stroke="#3b82f6" strokeWidth={2} dot={false} />
+            <ReferenceLine y={0} stroke="var(--color-chart-neutral)" strokeDasharray="3 3" />
+            <Line type="monotone" dataKey="equity" stroke="var(--color-chart-accent)" strokeWidth={2} dot={false} />
         </LineChart>
       </ResponsiveContainer>
     </div>

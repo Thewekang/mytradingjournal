@@ -28,7 +28,7 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(function 
         'border-[var(--color-border-strong)]',
         sizeMap[fieldSize],
         multiple && 'h-auto py-1',
-        invalid && 'outline-none ring-1 ring-red-500 border-red-500',
+        invalid && 'outline-none ring-1 ring-[var(--color-danger-ring)] border-[var(--color-danger-border)]',
         disabled && 'opacity-60 cursor-not-allowed',
         className
       )}

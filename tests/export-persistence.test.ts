@@ -1,10 +1,9 @@
 import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest';
 import { prisma } from '@/lib/prisma';
-import { ensureExportWorker } from '@/lib/services/export-job-service';
+import { initExportTestSuite, processJobNow } from './helpers/export-test-utils';
 
 // Enable feature flags for persistent queue in test env
-process.env.ENABLE_EXPORT_QUEUE = '1';
-process.env.ENABLE_PERSIST_EXPORT = '1';
+process.env.ENABLE_EXPORTS = '1';
 
 // Mock next-auth
 vi.mock('next-auth', async () => ({
@@ -26,18 +25,13 @@ declare global { var __TEST_USER_ID: string | undefined }
 
 function makeReq(url: string, init?: RequestInit) { return new Request(url, init); }
 
-async function waitForJob(id: string, timeoutMs = 10000) {
-  const start = Date.now();
-  while (Date.now() - start < timeoutMs) {
-    const res = await (JOB_DETAIL as unknown as (req: Request, ctx: { params: { id: string } }) => Promise<Response>)(
-      makeReq(`http://localhost/api/exports/jobs/${id}`),
-      { params: { id } }
-    );
-    const json = await res.json() as any; // eslint-disable-line @typescript-eslint/no-explicit-any
-    if (json?.data?.status === 'completed' || json?.data?.status === 'failed') return json.data;
-  await new Promise(r => setTimeout(r, 120)); // align with faster worker interval
-  }
-  throw new Error('Job timeout');
+async function waitForJob(id: string) {
+  const res = await (JOB_DETAIL as unknown as (req: Request, ctx: { params: { id: string } }) => Promise<Response>)(
+    makeReq(`http://localhost/api/exports/jobs/${id}`),
+    { params: { id } }
+  );
+  const json = await res.json() as any; // eslint-disable-line @typescript-eslint/no-explicit-any
+  return json?.data;
 }
 
 describe('persistent export job queue', () => {
@@ -46,7 +40,7 @@ describe('persistent export job queue', () => {
     const u = await seedUser();
     (globalThis as any).__TEST_USER_ID = u.id; // eslint-disable-line @typescript-eslint/no-explicit-any
     userId = u.id;
-  ensureExportWorker();
+    await initExportTestSuite();
   });
 
   beforeEach(async () => {
@@ -58,27 +52,28 @@ describe('persistent export job queue', () => {
     expect(res.status).toBe(202);
     const created = await res.json() as any; // eslint-disable-line @typescript-eslint/no-explicit-any
     const jobId = created.data.id;
+    await processJobNow(jobId);
     const final = await waitForJob(jobId);
     expect(final.status).toBe('completed');
     expect(final.filename).toBeDefined();
-    // download
     const dl = await (JOB_DOWNLOAD as unknown as (req: Request, ctx: { params: { id: string } }) => Promise<Response>)(
       makeReq(`http://localhost/api/exports/jobs/${jobId}/download`),
       { params: { id: jobId } }
     );
     expect(dl.status).toBe(200);
     const text = await dl.text();
-  expect(text.split('\n')[0]).toBe('id,instrumentId,direction,entryPrice,exitPrice,quantity,status,entryAt,exitAt');
-  }, 15000);
+    expect(text.split('\n')[0]).toBe('id,instrumentId,direction,entryPrice,exitPrice,quantity,status,entryAt,exitAt');
+  }, 10000);
 
   it('lists jobs including newly created one', async () => {
     const res = await JOB_POST(makeReq('http://localhost/api/exports/jobs', { method: 'POST', body: JSON.stringify({ type: 'trades', format: 'csv' }) }));
     const created = await res.json() as any; // eslint-disable-line @typescript-eslint/no-explicit-any
     const jobId = created.data.id;
+    await processJobNow(jobId);
     await waitForJob(jobId);
-  const listRes = await (JOB_LIST as unknown as (req: Request) => Promise<Response>)(makeReq('http://localhost/api/exports/jobs'));
-  const listJson = await listRes.json() as { data: Array<{ id: string }> };
-  const ids = listJson.data.map(j => j.id);
+    const listRes = await (JOB_LIST as unknown as (req: Request) => Promise<Response>)(makeReq('http://localhost/api/exports/jobs'));
+    const listJson = await listRes.json() as { data: Array<{ id: string }> };
+    const ids = listJson.data.map(j => j.id);
     expect(ids).toContain(jobId);
-  }, 15000);
+  }, 8000);
 });

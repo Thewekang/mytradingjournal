@@ -3,9 +3,9 @@ import { withLogging, jsonError, jsonOk } from '@/lib/api/logger-wrapper';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth-options';
 import { listInstruments, createInstrument } from '@/lib/services/instrument-service';
-import { validationError, unauthorized, internal, forbidden, conflict } from '@/lib/errors';
+import { validationError, unauthorized, internal, forbidden, isApiErrorShape, httpStatusForError } from '@/lib/errors';
 import { instrumentCreateSchema } from '@/lib/validation/trade';
-import { InstrumentDTO, ApiError } from '@/types/api';
+import { InstrumentDTO } from '@/types/api';
 
 async function _GET() {
   const instruments = await listInstruments();
@@ -50,11 +50,7 @@ async function _POST(req: NextRequest) {
     };
   return jsonOk(dto, 201);
   } catch (e) {
-    const err = e as ApiError & { code?: string };
-    const code = (err as { code?: string })?.code;
-    if (code === 'CONFLICT') {
-      return jsonError(conflict('Instrument already exists'), 409);
-    }
+    if (isApiErrorShape(e)) return jsonError(e, httpStatusForError(e));
     return jsonError(internal(), 500);
   }
 }

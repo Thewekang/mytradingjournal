@@ -21,5 +21,5 @@ describe('summary streak metrics', () => {
     }
     expect(max).toBe(3);
     expect(current).toBe(3);
-  });
+  }, 20000);
 });

@@ -11,10 +11,10 @@ const sizeMap: Record<Size,string> = {
   md: 'h-10 px-4 text-sm gap-2'
 };
 const variantMap: Record<Variant,string> = {
-  solid: 'bg-[var(--color-accent)] text-[var(--color-accent-foreground)] hover:bg-blue-500',
+  solid: 'bg-[var(--color-accent)] text-[var(--color-accent-foreground)] hover:bg-[var(--color-accent-hover)]',
   outline: 'border border-[var(--color-border)] text-[var(--color-text)] hover:bg-[var(--color-bg-alt)]',
   ghost: 'text-[var(--color-text)] hover:bg-[var(--color-bg-alt)]',
-  danger: 'bg-[var(--color-danger)] text-white hover:bg-red-600'
+  danger: 'bg-[var(--color-danger)] text-[var(--color-accent-foreground)] hover:bg-[var(--color-danger-hover)]'
 };
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
@@ -32,7 +32,7 @@ export const Button: React.FC<ButtonProps> = ({ variant='solid', size='md', load
       disabled={disabled || loading}
       {...rest}
     >
-      {loading && <span className="animate-spin h-4 w-4 border-2 border-white/40 border-t-white rounded-full" aria-hidden />}
+      {loading && <span className="animate-spin h-4 w-4 border-2 border-[var(--color-spinner-track)] border-t-[var(--color-accent-foreground)] rounded-full" aria-hidden />}
       {!loading && leftIcon}
       <span className="whitespace-nowrap">{children}</span>
       {!loading && rightIcon}

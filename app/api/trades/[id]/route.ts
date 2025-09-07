@@ -4,7 +4,7 @@ import { RouteContext } from '@/lib/api/params';
 import { getSessionUser } from '@/lib/session';
 import { updateTrade, deleteTrade, computeRealizedPnl } from '@/lib/services/trade-service';
 import { tradeUpdateSchema } from '@/lib/validation/trade';
-import { validationError, unauthorized, internal, notFound } from '@/lib/errors';
+import { validationError, unauthorized, internal, notFound, isApiErrorShape, httpStatusForError } from '@/lib/errors';
 import { prisma } from '@/lib/prisma';
 
 async function _GET(_: NextRequest, { params }: RouteContext<{ id: string }>) {
@@ -26,7 +26,8 @@ async function _PATCH(req: NextRequest, { params }: RouteContext<{ id: string }>
   const updated = await updateTrade(user.id, params.id, parsed.data);
     if (!updated) return new Response(JSON.stringify({ data: null, error: notFound() }), { status: 404 });
   return jsonOk(updated);
-  } catch {
+  } catch (e) {
+  if (isApiErrorShape(e)) return jsonError(e, httpStatusForError(e));
   return jsonError(internal(), 500);
   }
 }
@@ -38,7 +39,8 @@ async function _DELETE(_: NextRequest, { params }: RouteContext<{ id: string }>)
   const ok = await deleteTrade(user.id, params.id);
     if (!ok) return new Response(JSON.stringify({ data: null, error: notFound() }), { status: 404 });
   return new Response(JSON.stringify({ data: true, error: null }), { status: 204, headers: { 'Content-Type': 'application/json' } });
-  } catch {
+  } catch (e) {
+  if (isApiErrorShape(e)) return jsonError(e, httpStatusForError(e));
   return jsonError(internal(), 500);
   }
 }

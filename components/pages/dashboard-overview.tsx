@@ -1,5 +1,6 @@
 import { format } from 'date-fns';
 import { Card, CardContent, CardTitle } from '@/components/ui/card';
+import { EquityValidationStatus } from '@/components/equity-validation-status';
 
 export function DashboardOverview() {
   // Placeholder demo data; will source from API later
@@ -12,6 +13,9 @@ export function DashboardOverview() {
 
   return (
     <div className="space-y-8">
+      <section>
+        <EquityValidationStatus />
+      </section>
       <section className="grid sm:grid-cols-2 md:grid-cols-4 gap-4">
         {stats.map(s => {
           const valueDisplay = s.label === 'Win Rate'
@@ -23,7 +27,7 @@ export function DashboardOverview() {
             <Card key={s.label} className="p-0">
               <CardContent className="pt-4">
                 <CardTitle>{s.label}</CardTitle>
-                <div className={`text-2xl font-semibold leading-snug ${s.variant === 'profit' ? 'text-green-400' : s.variant === 'drawdown' ? 'text-red-400' : ''}`}>{valueDisplay}</div>
+                <div className={`text-2xl font-semibold leading-snug ${s.variant === 'profit' ? 'pl-positive' : s.variant === 'drawdown' ? 'pl-negative' : ''}`}>{valueDisplay}</div>
               </CardContent>
             </Card>
           );
@@ -39,7 +43,7 @@ export function DashboardOverview() {
                 <span className="font-medium">FCPO #{i}</span>
                 <span className="text-xs text-[var(--color-muted)]">{format(new Date(), 'MMM d, yyyy')}</span>
               </div>
-              <div className="font-semibold text-green-400">RM {(i*100).toFixed(0)}</div>
+              <div className="font-semibold pl-positive">RM {(i*100).toFixed(0)}</div>
             </div>
           ))}
         </div>

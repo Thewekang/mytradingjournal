@@ -1,0 +1,1 @@
+-- No-op: request_id column & index already exist from consolidated ExportJob migration.

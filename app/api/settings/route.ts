@@ -5,7 +5,7 @@ import { authOptions } from '@/lib/auth-options';
 import { isSessionUser } from '@/lib/session';
 import { getSettings, updateSettings } from '@/lib/services/settings-service';
 import { settingsUpdateSchema } from '@/lib/validation/trade';
-import { validationError, unauthorized, internal } from '@/lib/errors';
+import { validationError, unauthorized, internal, isApiErrorShape, httpStatusForError } from '@/lib/errors';
 
 async function _GET() {
   const session = await getServerSession(authOptions);
@@ -27,7 +27,8 @@ async function _PATCH(req: NextRequest) {
   try {
     const updated = await updateSettings(userId, parsed.data);
     return jsonOk(updated);
-  } catch {
+  } catch (e) {
+    if (isApiErrorShape(e)) return jsonError(e, httpStatusForError(e));
     return jsonError(internal(), 500);
   }
 }

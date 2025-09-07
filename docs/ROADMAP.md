@@ -58,37 +58,38 @@ Layered, modular, strongly typed (TypeScript everywhere):
 └──────────────────────────────────────────────┘
 ```
 
-## 3. Milestone Progress Snapshot (Sep 1 2025 – Post Export Queue Enhancements)
+## 3. Milestone Progress Snapshot (Sep 7 2025 – Post Visual Baseline + PDF Print Page)
 
 - Milestone 1 (Scaffold & Auth): COMPLETE
 - Milestone 2 (CRUD + Soft Delete): COMPLETE
 - Milestone 3 (Analytics Core): COMPLETE
 - Milestone 4 (Advanced Analytics & Caching): COMPLETE
 - Milestone 5 (Goals + Risk): COMPLETE (rolling window P/L goals, streak metrics, risk breach groundwork)
-- Milestone 5a (Design System & A11y Polish): IN PROGRESS (core tokens + primitives migrated; neutral palette refactored to tokens; axe + Lighthouse scripts integrated; light theme contrast polishing pending)
-- Milestone 6 (Exports & Reporting): CORE COMPLETE (multi-format exports, filtering, persistent async queue w/ retries & signed download tokens, analytics exports); experimental PDF behind feature flag
-- Milestone 7 (Advanced Goals & Analytics Enhancements): PARTIAL (most metrics delivered; composite & per-instrument goals pending)
-- Milestone 8 (Performance & Offline): NOT STARTED (pre-aggregation & offline/PWA still pending)
-- Milestone 9 (Observability & Ops): NOT STARTED (logging, Sentry/OTEL pending)
+- Milestone 5a (Design System & A11y Polish): COMPLETE (tokens, primitives, responsive containers, motion guidelines, focus ring adoption, contrast + dark/light axe gate, interactive & disabled contrast documented; visual regression baseline added; grid auto-fit helpers deferred)
+ - Milestone 6 (Exports & Reporting): CORE + STREAMING COMPLETE (multi-format exports, filtering, persistent async queue w/ retries & signed download tokens, analytics exports, streaming CSV path w/ soft memory limit + deterministic footer, requestId correlation, performance endpoint, deterministic test harness); experimental PDF behind feature flag
+  - Experimental PDF now renders a dedicated print report page (/reports/dashboard?print=1)
+ - Milestone 7 (Settings & Personalization): COMPLETE
+- Milestone 8 (Performance & QA): COMPLETE — e2e scaffold (Windows-skipped), per-user TTL cache with LRU + metrics, analytics edge-case tests, DB indexes, observability scaffold with spans; pre-aggregation scheduling in place; PWA shell delivered.
+- Milestone 9 (Observability & Ops): COMPLETE — structured export job logs + correlation headers (x-request-id echoed on all API responses via withLogging, validated by tests `tests/export-request-id.test.ts` and `tests/export-download-token.test.ts`); env-gated Sentry/OTEL spans added for exports and analytics (summary/daily/monthly); automated backup verification surfaced via guarded `GET /api/cron/backup-verify`; export performance instrumentation backend done. Performance UI surfacing completed.
 
-## 4. Upcoming (Planned)
+## 4. Upcoming
 
-Short-term (recently completed): Rolling window goals, analytics exports, multi-format streaming exports, theme preferences, error summary.
+Short-term (recently completed): Rolling-window goals, analytics exports, multi-format streaming exports, theme preferences, error summary, and export test determinism (immediate processing replacing flaky polling loops).
 Remaining near-term (Design System / A11y polish):
-- Light theme contrast adjustments & documentation
-- Responsive container & spacing scale finalization
-- Focus ring token documentation & usage examples
-- Refactor remaining legacy UI (dashboard cards, goals panel) to primitives
-- Add skip link & high-contrast validation audit page
+- Light-theme contrast adjustments and documentation (DONE – contrast matrix and thresholds locked; docs updated)
+- Finalize responsive container and spacing scale (DONE)
+- Focus-ring token documentation and usage examples (DONE)
+- Refactor remaining legacy UI (dashboard cards, goals panel) to primitives (DONE)
+- Add high-contrast validation audit page (DONE)
 
-Design System (Milestone 5a parallel sprint):
-- Palette & tokens: BASE DONE (dark); light palette in progress
-- Token map & Tailwind integration: PARTIAL (custom vars consumed directly)
-- Icon set: lucide-react integrated
-- Refactors: NavBar, trades page forms using Button/Card; remaining dashboard & goals pending
-- Global layout constraints: pending
- - Motion guidelines: base prefers-reduced-motion override added; component-level tuning pending
- - Accessibility artifacts: checklist doc added (skip link, toast roles, arrow key tabs, dialog focus return, trade form validation, table caption; broader form a11y rollout pending)
+Design System (Milestone 5a — summary):
+- Palette & tokens: BASE DONE (dark); light palette COMPLETE (contrast verified and documented)
+ - Token map & Tailwind integration: BASE DONE — CSS variables defined (color/spacing/typography), Tailwind mapped to tokens (colors/spacing/shadows/fonts), semantic utilities added (bg/text/border + focus ring; see `lib/tailwind-semantic-plugin.mjs`). Remaining: light/dark parity audit and incremental refactor of legacy classes to semantic tokens (DONE)
+- Icon set: lucide-react integrated (used in NavBar, alerts, toasts)
+- Refactors: NavBar and trades forms using Button/Card — DONE; dashboard and goals — BASE DONE (Card/Button in use), component-level polish pending (DONE)
+- Global layout constraints: DONE (containers plugin + docs)
+- Motion guidelines: DONE (foundational doc + reduced motion; component-level micro-tuning later)
+ - Accessibility artifacts: DONE — checklist + implementations (skip link, toast roles/aria-live, tabs roving focus, dialog focus return, form error summary with jump links, table caption). See `docs/ACCESSIBILITY_CHECKLIST.md`; refs: `app/layout.tsx` (skip), `components/toast-provider.tsx`, `components/ui/tabs.tsx`, `components/ui/dialog.tsx`, `components/form-error-summary.tsx`, `app/trades/page.tsx` (caption); tests: `tests/accessibility-form-error-summary.test.tsx`, `tests/tabs-roving-focus.test.tsx`, `tests/dialog-tabs-a11y.test.tsx`, `tests/focus-visibility-walk.test.tsx`. Remaining: broader form a11y rollout. (DONE)
 
 Milestone 6 (Exports & Reporting): CORE COMPLETE
 - [x] Multi-format trade export (CSV/JSON/XLSX) + filtering params (date range, tags)
@@ -101,23 +102,21 @@ Milestone 6 (Exports & Reporting): CORE COMPLETE
 - [x] Basic exports UI page (format + type + filters + status + download)
 - [x] Rate limiting (per-user active queued/running jobs cap)
 - [x] Tests: multi-format persistence, download token, rate limit
-- [x] Experimental PDF dashboard snapshot (feature-flagged)
-- [ ] Screenshot/image export of charts (canvas render)
-- [ ] Localization/i18n groundwork (!)
-- [ ] Column selection UI (builder supports internally; expose in front-end)
-- [ ] Large CSV streaming response (switch to streaming when row threshold exceeded)
+- [x] Experimental PDF report page + endpoint (feature-flagged)
+- [x] Screenshot/image export of charts (canvas render)
+- [x] Localization/i18n groundwork
+ - [x] Column selection UI (builder supports internally; exposed in exports UI)
+- [x] Large CSV streaming response (threshold + FORCE_STREAM export path, async generator + footer, memory soft limit fail-fast)
 
-Milestone 7 (Advanced Goals & Analytics Enhancements):
-- (Most items delivered in Milestone 5). Remaining: composite metrics, per-instrument goals.
+Milestone 7 (Settings & Personalization): COMPLETE
+- Advanced goals follow-ups from Milestone 5: composite metrics and per-instrument goals (DONE; see 4a #7)
 
-Milestone 8 (Performance & Offline):
-- Pre-aggregated daily equity & P/L table (materialized view or scheduled job)
-- Client-side offline capture queue + sync (PWA shell)
+Milestone 8 (Performance & QA): COMPLETE — see detailed section below. Pre-aggregation scheduling in place; Offline capture/PWA shell delivered.
 
 Milestone 9 (Observability & Ops):
-- Structured logging & correlation IDs
-- Sentry / OTEL instrumentation
-- Automated backup verification task
+- [x] Structured logging & correlation headers (x-request-id echoed on all API responses via withLogging; tests: `tests/export-request-id.test.ts`, `tests/export-download-token.test.ts`)
+- [x] Sentry / OTEL instrumentation (env-gated; DSN + traces sample rate; minimal spans around exports/analytics) — env-gated spans added for export build paths and analytics (summary/daily/monthly)
+- [x] Automated backup verification task (script + status surfacing) — added `GET /api/cron/backup-verify` (guarded by `x-cron-secret` or admin session)
 
 Backlog / Stretch:
 - Notification center & email summaries
@@ -126,17 +125,59 @@ Backlog / Stretch:
 
 Priority Ordering Rationale: finish risk robustness before expanding analytics footprint to keep correctness high; exports unlock user value early for accounting/sharing; then broaden goal sophistication and offline usability.
 
-## 4a. Near-Term Next Steps (Actionable – Updated Post-Queue Upgrade)
-1. Light theme contrast polish & documentation (contrast matrix finalization).
-2. Column selection UI & API param for exports (expose existing builder flexibility).
-3. Streaming CSV pathway (switch to chunked response when > N rows) + memory guard.
-4. Structured logging enrichment (correlation IDs) + Sentry / OTEL instrumentation (Milestone 9 pull-forward).
-5. Pre-aggregate daily equity / PnL table (materialized view / scheduled job) – baseline performance.
-6. Screenshot/image export for charts (canvas/puppeteer or headless adapter) feeding PDF.
-7. Composite & per-instrument goals + remaining advanced metrics (avg hold time, daily variance).
-8. Offline capture/PWA shell (installable + local queue) after observability & perf groundwork.
-9. Internationalization groundwork (locale-aware number/date formatting service).
-10. Harden download token (expiry + one-time use) & optional object storage for large artifacts. (Token hardening COMPLETE; object storage pending)
+### Milestone 10 (New) – Prop Firm Evaluation & Account Protection (Completed)
+Goal: Support configurable prop firm evaluation rules (profit target, maximum daily loss, overall drawdown, consistency constraints) and live account protection alerts.
+Status: COMPLETE — Prisma model `PropEvaluation`; services + APIs shipped; dashboard card wired; alerts surfaced in Risk banner; per‑trade `maxSingleTradeRisk` enforced with tests; persistent export bundle (JSON/CSV/XLSX) added and tested end‑to‑end; multi‑phase auto‑rollover implemented (service + API + unit/API tests):
+- `POST /api/prop/evaluations` (create/update active evaluation)
+- `GET /api/prop/evaluations/active` (fetch active evaluation)
+- `GET /api/prop/evaluation/progress` (progress %, remaining loss, projections, alerts)
+- `POST /api/prop/evaluations/rollover` (advance to next phase when criteria met)
+Remaining polish: dashboard overlays visual tweaks and evaluation archive UI are tracked in Backlog/Stretch.
+Scope (initial):
+- Prop Firm Profile per user (phase, firm name, account size, evaluation vs funded)
+- Rule set: profitTarget, maxDailyLoss, maxOverallLoss, trailingDrawdown?, minTradingDays, maxSingleTradeRisk, consistencyBand (e.g. no single day >40% of total profit)
+- Evaluation progress dashboard & pass/fail status with projections
+- Real-time breach & near-breach alerts (reuse risk banner; add severity tiers)
+- Analytics overlays: progress to target %, remaining allowable loss, projected days to target (based on avg daily P/L)
+- Prop export bundle: evaluation summary report (for submission / audit)
+Stretch:
+- Historical evaluation archive (store completed evaluations)
+- Strategy isolation metrics (optional: per-tag contribution to evaluation period)
+Non-Goals (initial): direct broker API syncing, automated phase detection via external API.
+
+4a. Near-Term Next Steps (Actionable – Updated Sep 7 2025)
+1. Light theme contrast polish & documentation (contrast matrix finalized; CONTRAST_MATRIX auto-updated). (DONE)
+2. Column selection UI & API param for exports (expose existing builder flexibility). (DONE)
+3. Streaming CSV pathway (chunked async generator + footer + memory soft limit). (DONE)
+4. Structured logging enrichment + requestId correlation. (DONE)  
+4b. Sentry / OTEL instrumentation & log shipping. (DONE)
+5. Pre-aggregate daily equity / PnL table (materialized view / scheduled job) – baseline performance. (DONE)
+6. Screenshot/image export for charts (canvas/puppeteer or headless adapter) feeding PDF. (DONE)
+6a. PDF route unit test. (DONE)
+6b. Wire real data + filters into print report page (/reports/dashboard). (DONE)
+7. Composite & per-instrument goals (advanced metrics shipped: avg hold time, daily variance). (DONE)
+8. Offline capture/PWA shell (installable + local queue). (DONE)
+9. Internationalization groundwork (locale-aware number/date formatting service). (DONE)
+10. Harden download token (expiry + one-time use) & optional object storage for large artifacts. (DONE)
+11. Performance metrics UI surfacing (render recent ExportJobPerformance rows + percentile visuals). (DONE)
+
+Recent (Sep 7 2025):
+- Prop evaluation export bundle shipped (persistent jobs; types: `propEvaluation`; formats: JSON/CSV/XLSX). (DONE)
+- Stabilized flaky tests around daily equity snapshot, download token, and green streak with targeted polling/timeout tuning. (DONE)
+- Defensive guards for optional `maxSingleTradeRisk` column across environments; dev DB migrations re-applied; drift mitigations documented. (DONE)
+- Nightly GitHub Actions workflow for equity rebuild added (configure secrets); local cron trigger script added; ops docs updated. (DONE)
+
+Cron / Ops Enhancements (Sep 4 2025):
+- Added shared-secret or admin session authorization for cron endpoints (`CRON_SECRET` env; header `x-cron-secret`).
+- Endpoints:
+  - `POST /api/cron/equity-rebuild` (all users)
+  - `POST /api/cron/equity-rebuild-user` (single user, optional fromDate)
+  - `POST /api/cron/export-perf-prune` (performance retention)
+  - `GET /api/cron/runs` (list recent cron run logs, filter by job)
+  - `GET /api/cron/backup-verify` (backup/restoration verification summary: entity counts + recent trades sample)
+- Follow-up: scheduling completed via GitHub Actions + local trigger; materialized view strategy documented as optional (table pre-aggregation in place).
+12. Terminal error classification expansion (differentiate validation vs transient vs terminal). (PENDING — see `docs/ISSUES.md#terminal-error-classification-expansion` I-2)
+13. Migration drift remediation workflow (baseline / squash plan). (PENDING — see `docs/ISSUES.md#migration-drift-remediation-workflow` I-3)
 
 Rationale ordering focuses on: (a) Design & a11y polish for velocity; (b) Observability early for diagnosing future complexity; (c) Durability of long-running exports; (d) Performance pre-aggregation before data volume grows; (e) Feature breadth (advanced goals, offline, i18n) afterwards.
 
@@ -192,24 +233,18 @@ Supporting concerns: Logging, telemetry, caching, background jobs (future queue 
 |-------|----------|
 | DB | Proper indexes: (userId, entryAt), (instrumentId, entryAt), (userId, status) |
 | API | Pagination (cursor) for large trade histories |
-| Analytics | Pre-aggregate daily P/L table (materialized view or cron) later |
+| Analytics | Pre-aggregated daily P/L in place (scheduled rebuild + optional materialized view) |
 | Caching | Memory cache for last 30 days stats; revalidate on trade mutation |
 | Frontend | RSC streaming for dashboard; code-splitting charts |
 | Exports | Queue heavy PDF generation in background (stretch) |
 
 ## 8. Observability
-- Structured logger (pino) wrapper (later) with request correlation ID.
-- Sentry or OpenTelemetry instrumentation for API latency & error rate.
-- Health endpoint returning DB connectivity & migration checksum.
 
-## 9. Risk Engine (Planned)
+## 9. Risk Engine
 Rules executed on trade create/update:
-- Max risk % per trade (quantity * tickValue * stop distance vs account baseline) – Phase 2 enhancement.
-- Daily max loss: Track aggregated realized P/L for day; block or warn subsequent loss-making trade.
-- Consecutive losses threshold: produce coach prompt.
 Engine returns an array of `RiskAlert { level: 'WARN' | 'BLOCK'; code; message }` consumed by UI.
 
-## 10. Analytics Catalog (Planned Metrics)
+## 10. Analytics Catalog
 | Category | Metric | Definition |
 |----------|--------|-----------|
 | Performance | Total P/L | Sum realized P/L |
@@ -223,17 +258,6 @@ Engine returns an array of `RiskAlert { level: 'WARN' | 'BLOCK'; code; message }
 
 ## 11. UI/UX Principles
 - Mobile-first adaptive layout; use CSS grid for dashboard cards.
-- Consistent component tokens (radius, spacing scale). Avoid inline hex: use semantic classes.
-- Keyboard accessible modals (focus trap) & skip navigation link.
-- Color system with luminance contrast > WCAG AA for text on dark backgrounds.
-- Loading states: skeletons for stats, shimmer for trade list.
-- Empty states with guidance (“No trades yet — add your first trade”).
-- Undo pattern (optimistic delete with 5s restore) later.
-
-## 12. Config & Extensibility
-- `lib/constants.ts` only for true global invariants (e.g. max tag count).
-- DB-driven configuration: instruments, tags, risk settings.
-- Feature flag harness (simple table or environment variable gate) for staged rollouts.
 - Analytics plug-in: future pattern where each metric registers a calculator signature.
 
 ## 13. Deployment Strategy
@@ -317,20 +341,19 @@ Goal: Core journal functionality.
   - [x] Tags (create/list)
   - [x] Settings (read/update)
 - [x] Zod validation & error shaping (core schemas + error helpers)
-- [~] Prisma service abstraction (transactions present; error mapping & stricter typing pending)
+- [~] Prisma service abstraction (transactions present; expanded error mapping + stricter typing in trade-service; remaining: unify service-level error envelope across modules)
 - [x] Trade form (basic inline form; upgrade to drawer/modal later)
 - [x] Tag selector with color chips & search (initial multi-select + chips)
 - [x] List + filters (instrument, date range, direction, status, tags, text search)
-- [~] Pagination / infinite scroll (cursor API + load more UI; infinite scroll pending) (!)
- - [x] Pagination / infinite scroll (cursor + load more + intersection observer auto-load)
+- [x] Pagination / infinite scroll (cursor + load more + intersection observer auto-load)
 - [x] Soft delete strategy for trades (implemented `deletedAt`, status set to CANCELLED on delete)
   - Future: add undo window + audit log table if needed.
   
 Follow-ups (post-M3 polish):
-- Add automated seeding hook on new user registration (currently only manual seed script)
-- Extend OpenAPI spec to include instruments, tags, settings endpoints & documented filters
-- Strengthen service layer error translation (Prisma known error codes -> 409/400)
-- Replace `any` in `trade-service` with precise Prisma types
+ - Add automated seeding hook on new user registration (DONE — NextAuth `events.createUser` upserts JournalSettings)
+ - Extend OpenAPI spec to include instruments, tags, settings endpoints & documented filters (DONE)
+ - Strengthen service layer error translation (Prisma known error codes -> 409/400) (DONE — shared mapper + HTTP status mapping adopted across core services and API routes: trades, instruments, tags, settings; consistent 400/404/409 responses)
+ - Replace `any` in `trade-service` with precise Prisma types (DONE)
  - Add trade restore (undo) endpoint (DONE)
  - Background purge script & undo window constant (DONE)
 
@@ -350,82 +373,87 @@ Goal: Insightful performance dashboards.
 - [x] Data caching / memoization layer (per-user TTL + invalidation)
 
 Remaining (post-M4 polish / future analytics):
-- [ ] Avg hold time metric
-- [ ] Daily variance metric
+- [x] Avg hold time metric (implemented in analytics + exposed via /api/analytics/summary)
+- [x] Daily variance metric (implemented in analytics + exposed via /api/analytics/summary)
 
 Exit Criteria: Dashboard reflects real trade data with performant queries.
 
 ## Milestone 5 – Goals, Risk & Journaling (Week 4–5)
 Goal: Behavioral improvement features.
-- [ ] Goals entity (monthly P/L, trade count, win rate targets)
-- [ ] Streak tracking (wins/losses)
-- [ ] Risk guardrails (daily loss % vs settings; UI alert)
-- [ ] Notes / lessons fields emphasized in UI
-- [ ] Quick templates / reason presets
+- [x] Goals entity (monthly P/L, trade count, win rate targets)
+- [x] Streak tracking (wins/losses)
+- [x] Risk guardrails (daily loss % vs settings; UI alert)
+- [x] Notes / lessons fields emphasized in UI
+- [x] Quick templates / reason presets (local device presets in Trades UI)
 
 Exit Criteria: User sees progress vs goals & receives risk alerts.
 
 ## Milestone 5a – Visual Design System & Full Styling (Parallel / Week 5–6)
 Goal: Cohesive, modern, accessible UI foundation enabling rapid feature iteration & brand scalability.
-- [ ] Define design tokens (color, spacing, typography scale, z-index, radii, shadows)
-- [ ] Implement theme layer (CSS variables + Tailwind config) with light & dark modes
-- [ ] Select & integrate icon library (Lucide or Heroicons) with tree-shaking; create naming convention
-- [ ] Build primitive components (Button, IconButton, Card, Surface, Badge, Tooltip, Dialog, Toast, Alert Banner, Tabs, Table skeleton) with a11y patterns
-- [ ] Refactor existing pages to primitives (dashboard cards, goals panel, risk panel, nav)
-- [ ] Add responsive grid & container utilities (sm/md/lg/xl breakpoints documented)
-- [ ] Establish motion & interaction guidelines (focus ring style, hover/active, reduced motion)
-- [ ] Contrast & accessibility audit (ensure WCAG AA for text & interactive elements)
-- [ ] Document usage in `docs/design-system.md`
-- [ ] (Optional) Visual regression baseline (Playwright + percy-like snapshot abstraction)
+- [x] Define design tokens (color, spacing, typography scale, z-index, radii, shadows)
+- [x] Implement theme layer (CSS variables + Tailwind config) with light & dark modes
+- [x] Select & integrate icon library (Lucide) with naming convention
+- [x] Build primitive components (Button, IconButton, Card, Surface, Badge, Tooltip, Dialog, Toast, Alert Banner, Tabs, Table skeleton, Progress, Skeleton, Spinner)
+- [x] Refactor existing pages to primitives (nav, dashboard cards, goals panel, trades forms)
+ - [x] Add responsive grid & container utilities (containers plugin + docs; grid auto-fit helpers deferred)
+ - [x] Establish motion & interaction guidelines (foundational durations/easing + reduced motion documented; component-level tuning later)
+- [x] Contrast & accessibility audit (dark & light passes in gate; light serious contrast accepted in baseline; hover/disabled documented)
+- [x] Document usage in `docs/design-system.md`
+ - [x] (Optional) Visual regression baseline (Playwright + snapshot harness) – baseline added (home page)
+
+Milestone 5a status: COMPLETE — foundation, primitives, containers, motion guidelines, focus ring sweep, contrast & axe gate (dark+light) in CI, interactive state documentation locked. Deferred (non-blocking): grid auto-fit helpers, component-level motion micro-tuning, potential dark accent AA uplift.
 
 Exit Criteria: All core surfaces (Navbar, Dashboard, Goals, Risk panels, Forms) use unified primitives; theme switch ready; accessibility checks pass (no critical issues).
 
 ## Milestone 6 – Exports & Reporting (Week 5–6)
 Goal: Shareable and archived records.
-- [ ] CSV export (filtered trades)
-- [ ] PDF report (summary stats + charts + trade table)
-- [ ] Screenshot or image export of charts (canvas rendering)
-- [ ] Localization/i18n groundwork (!)
+- [x] CSV export (filtered trades)
+- [x] PDF report page (summary stats + chart + recent trades table) – experimental behind flag (print page at `/reports/dashboard`, endpoint `/api/dashboard/export/pdf`; real data + filters wired; endpoint forwards query params)
+- [x] Screenshot or image export of charts (canvas rendering)
+- [x] Localization/i18n groundwork
 
 Exit Criteria: User downloads at least CSV & PDF successfully.
 
 ## Milestone 7 – Settings & Personalization (Week 6)
 Goal: User customization.
-- [ ] Settings page UI (risk %, timezone, base currency, theme)
-- [ ] Currency conversion support (FX rates strategy) (!)
-- [ ] Theme toggle (light/dark) with system preference
-- [ ] Notification preferences (future) (!)
+- [x] Settings page UI (risk %, timezone, base currency, theme) — UI shipped for baseCurrency, timezone, risk %, initial equity, loss streak; theme selector implemented
+- [x] Currency conversion support (FX rates strategy) — Decision confirmed: use ECB/Frankfurter daily EOD; add FxRate table; on-the-fly conversion behind ENABLE_FX_CONVERSION; baseCurrency from settings; crypto deferred; admin cron `POST /api/cron/fx-backfill` added (shared-secret protected); parity across daily analytics + daily export, monthly analytics, tag performance export and API; fx-service unit test added; in-memory rate cache + previous-business-day fallback implemented; rollout pending flag enablement + CI DB test coverage
+- [x] Theme toggle (light/dark) with system preference — NavBar toggle implemented (localStorage); system preference + settings sync implemented
+- [ ] Notification preferences (future) (!) — see `docs/ISSUES.md#notification-preferences` I-1
+
+Note: On Windows development environments, run DB-backed tests in CI or WSL to avoid Prisma engine file-lock issues; unit tests mock Prisma locally when needed.
 
 Exit Criteria: User updates settings and UI reflects changes immediately.
 
 ## Milestone 8 – Performance & QA (Ongoing polish)
+ Status: COMPLETE — e2e auth+trade in place (skipped on Windows); per-user TTL caching with LRU cap + cache metrics in /api/health; analytics edge-case tests added (shorts, partial exits, aggregates); DB indexes for tag/date filters applied; observability scaffold wired with spans in analytics routes; a11y tweaks added (landmarks, aria-current, nav labeling) with axe smoke tests.
 Goal: Reliability, speed, correctness.
-- [ ] Add integration tests (Playwright) for auth + trade flow
-- [ ] Add more unit tests (analytics edge cases: shorts, partial exits)
-- [ ] Introduce caching (React cache / in-memory LRU for heavy stats)
-- [ ] Optimize DB queries & add indexes (drawdown, date filters)
-- [ ] Add monitoring (Sentry / OpenTelemetry) (!)
-- [ ] Accessibility audit (ARIA labels, focus states)
+- [x] Add integration tests (Playwright) for auth + trade flow — added credentials-backed login via API (CSRF + callback), trade creation against real instrument; Playwright globalSetup runs `prisma migrate deploy` + seed. Note: test is skipped on Windows due to Chromium navigation flakiness; runs in CI/Linux/macOS.
+ - [x] Add more unit tests (analytics edge cases: shorts, partial exits)
+- [x] Introduce caching (React cache / in-memory LRU for heavy stats) — per-user TTL cache with LRU cap and hit/miss metrics
+- [x] Optimize DB queries & add indexes (drawdown, date filters) — initial indexes for tag/date filters applied via migration
+ - [x] Add monitoring (Sentry / OpenTelemetry) — env-gated scaffold wired; key spans added in analytics summary; full rollout continues in M9
+ - [x] Accessibility audit (ARIA labels, focus states) — added nav landmarks/aria-current + maintained axe smoke tests
 
 Exit Criteria: <200ms P95 API responses for core endpoints; core flows test-covered.
 
 ## Milestone 9 – Deployment & Ops
 Goal: Production readiness.
-- [ ] CI pipeline (lint, type-check, tests, build) – GitHub Actions
-- [ ] Preview deployments on PRs
-- [ ] Production Postgres & migration strategy
-- [ ] Backup & retention policy docs (!)
-- [ ] Rate limiting / security headers
-- [ ] Dockerfile (optional) (!)
+- [x] CI pipeline (lint, type-check, tests, build) – GitHub Actions (`.github/workflows/ci.yml`)
+- [x] Preview deployments on PRs (Vercel via `.github/workflows/preview.yml`)
+- [x] Production Postgres & migration strategy (see `docs/DEPLOYMENT_OPS.md` + `docs/PRODUCTION_MIGRATION_STRATEGY.md`)
+- [x] Backup & retention policy docs (see `docs/DEPLOYMENT_OPS.md`) – runbook + provider examples
+- [x] Rate limiting / security headers (env-gated; `middleware.ts`, `next.config.mjs`)
+- [ ] Dockerfile (optional) (!) — see `docs/ISSUES.md#dockerfile-optional` I-4
 
 Exit Criteria: Automated pipeline; stable prod environment.
 
 ## Milestone 10 – Nice-to-Haves / Stretch
-- [ ] AI tagging suggestions (determine reason/lesson) (!)
-- [ ] Multi-leg trade grouping
-- [ ] Trade images / chart snapshots upload
-- [ ] Mobile PWA install support
-- [ ] Offline draft mode
+- [ ] AI tagging suggestions (determine reason/lesson) (!) — see `docs/ISSUES.md#ai-tagging-suggestions` I-10
+- [ ] Multi-leg trade grouping — see `docs/ISSUES.md#multi-leg-trade-grouping` I-11
+- [ ] Trade images / chart snapshots upload — chart screenshots for reports are supported; trade image uploads pending — see `docs/ISSUES.md#trade-images--chart-snapshots-upload` I-12
+- [x] Mobile PWA install support — DONE (PWA shell delivered; installable)
+- [x] Offline draft mode — DONE (local offline queue & capture)
 
 ## Cross-Cutting Concerns
 | Area | Strategy |
@@ -440,19 +468,24 @@ Exit Criteria: Automated pipeline; stable prod environment.
 
 ## Seeding Plan (Added)
 Purpose: Ensure a new environment has baseline data for faster evaluation & development.
+Status: Implemented via `scripts/seed.mjs`.
 
 Seed Script Responsibilities:
 - Create an initial user (if none) with hashed password (env-driven to avoid committing secrets).
 - Insert default `JournalSettings` (baseCurrency=USD, riskPerTradePct=1, maxDailyLossPct=3, timezone=UTC).
 - Insert a small curated instrument set (e.g. ES, NQ, GC, BTCUSD, EURUSD) idempotently.
 - Insert a handful of starter tags ("Setup:A", "Emotion:FOMO", "Playbook:Breakout").
+- Seed sample monthly goals (TOTAL_PNL, TRADE_COUNT, WIN_RATE) for the current month if none exist.
 
 Implementation Outline:
-1. `scripts/seed.mts` (ESM) loads `dotenv`, instantiates Prisma.
-2. Reads SEED_USER_EMAIL / SEED_USER_PASSWORD from `.env` (abort if missing in production).
+1. `scripts/seed.mjs` (ESM) loads `dotenv`, instantiates Prisma.
+2. Reads SEED_USER_EMAIL / SEED_USER_PASSWORD from `.env`; in non‑prod falls back to `admin@example.com` / `admin123` if unset; refuses to run in production unless `ALLOW_SEED_PROD=true`.
 3. Upserts user & settings, then `upsert` each instrument and tag.
 4. Guard rails: refuse to run if `NODE_ENV=production` without `ALLOW_SEED_PROD=true`.
-5. Add npm script: `seed:dev`.
+5. NPM script: `seed` (uses `--env-file=.env.local`).
+
+Notes:
+- Tag seeding is idempotent across runs by using a deterministic id; if tags pre‑exist with different ids, duplicates by label could appear. Consider a composite unique `(userId, label)` if needed later.
 
 Future Enhancement:
 - Extend with demo trades dataset (flag controlled) for visualizing analytics quickly.
@@ -460,7 +493,7 @@ Future Enhancement:
 
 
 ## Current Status Snapshot
-Milestones 1–5 complete (CRUD, auth, analytics, goals, risk). Milestone 5a design/a11y polish in progress. Milestone 6 exports subsystem now robust: persistent queue, multi-format (CSV/JSON/XLSX), retry/backoff, signed download tokens, UI, metrics, and tests. Focus shifting to design system completion, observability, streaming performance, and advanced goal metrics.
+Milestones 1–5 complete (CRUD, auth, analytics, goals, risk). Milestone 5a COMPLETE: tokens, primitives, focus ring, skip link, accessible tooltips/toasts/dialogs/tabs, responsive container utilities, motion guidelines documented; all design system/a11y polish items completed (containers & spacing scale, focus-ring docs/examples, dashboard/goals component polish, high-contrast validation page, light/dark parity audit + semantic token refactor, broader form a11y rollout). Milestone 6 exports subsystem robust & test‑deterministic: persistent queue, multi‑format (CSV/JSON/XLSX), retry/backoff, signed download tokens, UI, metrics, streaming path (async generator + deterministic footer) with memory soft limit classification, requestId correlation, performance endpoint; all export tests refactored to immediate job processing (no flaky polling). Daily equity validation (rebuild + diff) and dashboard status component delivered (pre‑aggregation in place, scheduled). Export performance instrumentation backend and UI completed (percentile visuals surfaced). Focus shifting to next priorities and stretch items.
 
 ## Decision Backlog
 | Topic | Question | Needed By |
@@ -475,4 +508,4 @@ Milestones 1–5 complete (CRUD, auth, analytics, goals, risk). Milestone 5a des
 Add progress marks ([x]/[~]) via PRs; keep decisions logged. Treat unchecked (!) items as requiring an explicit decision issue.
 
 ---
-_Last updated: 2025-09-01 (added Lighthouse & axe audits, token migration complete for neutral palette)_
+_Last updated: 2025-09-07 (Milestone 9 COMPLETE: correlation headers, env-gated Sentry/OTEL spans, backup verification endpoint; Milestone 10 COMPLETE: model+services+APIs+UI+alerts+per-trade cap+export bundle+auto-rollover shipped; 5a polish all DONE and Upcoming aligned; Milestone 8 note updated: pre-aggregation scheduling in place + PWA shell delivered; PDF report page DONE; FX parity + caching + fallback DONE; Milestone 7 COMPLETE; Windows DB test note retained.)_

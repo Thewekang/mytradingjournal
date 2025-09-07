@@ -5,7 +5,7 @@ import { authOptions } from '@/lib/auth-options';
 import { tradeCreateSchema } from '@/lib/validation/trade';
 import { createTrade, listTrades, computePerTradeRiskPct, RiskError } from '@/lib/services/trade-service';
 import { hasActiveHardBreach } from '@/lib/services/risk-service';
-import { validationError, unauthorized, internal } from '@/lib/errors';
+import { validationError, unauthorized, internal, isApiErrorShape, httpStatusForError } from '@/lib/errors';
 import { ResponseEnvelope, TradeDTO } from '@/types/api';
 
 async function _GET(req: NextRequest) {
@@ -87,7 +87,8 @@ async function _POST(req: NextRequest) {
     tags: trade.tags?.map(t => ({ id: t.tagId, label: '', color: '' })) // placeholder; expand if tags loaded on create
   };
   return new Response(JSON.stringify({ data: dto, warning: riskWarning, error: null }), { status: 201, headers: { 'Content-Type': 'application/json' } });
-  } catch {
+  } catch (e) {
+    if (isApiErrorShape(e)) return jsonError(e, httpStatusForError(e));
     return jsonError(internal(), 500);
   }
 }

@@ -153,4 +153,12 @@ Before finalizing changes, verify:
 Add new sections at the bottom with versioned heading (e.g., `## vNext Additions`) so historical guidance remains intact.
 
 ---
-_Last updated: 2025-08-31 (post rolling window goals & tooltip)_
+## 18. Feature Flags (Current)
+- ENABLE_EXPORTS: Enables persistent export subsystem (jobs API, worker, metrics, download token enforcement).
+- ENABLE_PDF_EXPORT: Enables PDF export route (dashboard print snapshot via Playwright, lazy imported).
+- ENABLE_FX_CONVERSION: Enables FX conversion in analytics & exports; requires FxRate backfill for full parity.
+
+Notes:
+- Some test suites stub Prisma under `FOCUS_TEST=1` to avoid initializing the native engine (Windows file-lock caveat). Prefer DB-backed tests in CI or WSL.
+
+_Last updated: 2025-09-06 (feature flags, Windows dev caveat)_

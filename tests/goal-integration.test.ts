@@ -13,6 +13,7 @@ async function setupUser() {
 }
 
 describe('Goal integration [db]', () => {
+  // Allow more time because Prisma + aggregation can exceed default 5s under heavy test load
   it('updates TOTAL_PNL and TRADE_COUNT and WIN_RATE goals after trades', async () => {
     const { user, instrument } = await setupUser();
   const start = new Date(Date.now() - 24*3600*1000); // start yesterday to avoid timezone edge
@@ -36,5 +37,5 @@ describe('Goal integration [db]', () => {
     expect(pnlGoal?.currentValue).toBeGreaterThan(0); // first trade win * multiplier
     expect(countGoal?.currentValue).toBe(2);
     expect(winRateGoal?.currentValue).toBe(50); // 1 of 2 wins => 50%
-  });
+  }, 15000);
 });

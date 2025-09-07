@@ -4,7 +4,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth-options';
 import { isSessionUser } from '@/lib/session';
 import { listTags, createTag } from '@/lib/services/tag-service';
-import { validationError, unauthorized, internal } from '@/lib/errors';
+import { validationError, unauthorized, internal, isApiErrorShape, httpStatusForError } from '@/lib/errors';
 import { tagCreateSchema } from '@/lib/validation/trade';
 
 async function _GET() {
@@ -27,7 +27,8 @@ async function _POST(req: NextRequest) {
   try {
     const tag = await createTag(userId, parsed.data);
     return jsonOk(tag, 201);
-  } catch {
+  } catch (e) {
+    if (isApiErrorShape(e)) return jsonError(e, httpStatusForError(e));
     return jsonError(internal(), 500);
   }
 }

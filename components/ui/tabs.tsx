@@ -78,7 +78,8 @@ export function TabsTrigger({ value, className, children, ...rest }: TabsTrigger
       id={`${ctx.idBase}-tab-${value}`}
       tabIndex={selected ? 0 : -1}
       onClick={() => ctx.setValue(value)}
-  className={clsx('px-3 h-8 rounded text-xs font-medium transition-colors focus-ring', selected ? 'bg-[var(--color-accent)] text-[var(--color-accent-foreground)] shadow-sm' : 'text-[var(--color-muted)] hover:text-[var(--color-text)]', className)}
+  className={clsx('px-3 h-8 rounded text-xs font-medium transition-colors focus-ring data-[selected=true]:shadow-[var(--elevation-1)]', selected ? 'bg-[var(--color-accent)] text-[var(--color-accent-foreground)]' : 'text-[var(--color-muted)] hover:text-[var(--color-text)]', className)}
+      data-selected={selected || undefined}
       {...rest}
     >
       {children}

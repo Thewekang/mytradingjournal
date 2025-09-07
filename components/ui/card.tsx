@@ -21,7 +21,7 @@ export const Card = React.forwardRef<HTMLDivElement, CardProps>(function Card(
       className={clsx(
         'card rounded-lg border text-sm transition-colors',
         'border-[var(--color-border)]',
-        'shadow-sm',
+  'shadow-[var(--elevation-1)]',
         interactive && 'cursor-pointer hover:border-[var(--color-border-strong)]',
         interactive && 'hover:bg-[var(--color-bg-muted)]',
         interactive && 'focus-ring focus:outline-none',

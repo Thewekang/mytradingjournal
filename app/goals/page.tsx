@@ -1,4 +1,10 @@
 import { requireUser } from '@/lib/auth';
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Goals • Trading Journal',
+  description: 'Set and track performance goals and progress metrics.'
+};
 import React from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -96,7 +102,7 @@ function GoalsClient({ initial }: { initial: GoalItem[] }) {
   }
 
   return (
-    <div className="space-y-6 p-4">
+    <div className="space-y-6">
       <div>
         <h1 className="text-xl font-semibold mb-1">Goals</h1>
   <p className="text-xs text-[var(--color-muted)]">Track performance targets. Progress updates automatically from trades.</p>
@@ -131,30 +137,30 @@ function GoalsClient({ initial }: { initial: GoalItem[] }) {
           <div className="flex flex-col">
             <label className="mb-0.5" htmlFor="goal-target">Target</label>
             <Input id="goal-target" type="number" step="0.01" value={form.targetValue} onChange={e=>setForm(f=>({...f,targetValue:e.target.value}))} invalid={!!formErrors.targetValue} aria-describedby={formErrors.targetValue ? 'goal-target-err':undefined} className="w-28" variant="inset" fieldSize="sm" />
-            {formErrors.targetValue && <span id="goal-target-err" className="text-[10px] text-red-400">{formErrors.targetValue}</span>}
+            {formErrors.targetValue && <span id="goal-target-err" className="text-[10px] text-status-danger">{formErrors.targetValue}</span>}
           </div>
           {form.type === 'ROLLING_WINDOW_PNL' && (
             <div className="flex flex-col">
               <label className="mb-0.5" htmlFor="goal-window">Window (days)</label>
               <Input id="goal-window" type="number" min={1} max={365} value={(form as Record<string,string>)['windowDays'] || ''} onChange={e=>setForm(f=>({...f, windowDays: e.target.value }))} invalid={!!formErrors['goal-window']} aria-describedby={formErrors['goal-window']? 'goal-window-err':undefined} className="w-24" variant="inset" fieldSize="sm" />
-              {formErrors['goal-window'] && <span id="goal-window-err" className="text-[10px] text-red-400">{formErrors['goal-window']}</span>}
+              {formErrors['goal-window'] && <span id="goal-window-err" className="text-[10px] text-status-danger">{formErrors['goal-window']}</span>}
             </div>
           )}
             <div className="flex flex-col">
               <label className="mb-0.5" htmlFor="goal-start">Start</label>
               <Input id="goal-start" type="date" value={form.startDate} onChange={e=>setForm(f=>({...f,startDate:e.target.value}))} invalid={!!formErrors.startDate} aria-describedby={formErrors.startDate? 'goal-start-err':undefined} variant="inset" fieldSize="sm" />
-              {formErrors.startDate && <span id="goal-start-err" className="text-[10px] text-red-400">{formErrors.startDate}</span>}
+              {formErrors.startDate && <span id="goal-start-err" className="text-[10px] text-status-danger">{formErrors.startDate}</span>}
             </div>
             <div className="flex flex-col">
               <label className="mb-0.5" htmlFor="goal-end">End</label>
               <Input id="goal-end" type="date" value={form.endDate} onChange={e=>setForm(f=>({...f,endDate:e.target.value}))} invalid={!!formErrors.endDate} aria-describedby={formErrors.endDate? 'goal-end-err':undefined} variant="inset" fieldSize="sm" />
-              {formErrors.endDate && <span id="goal-end-err" className="text-[10px] text-red-400">{formErrors.endDate}</span>}
+              {formErrors.endDate && <span id="goal-end-err" className="text-[10px] text-status-danger">{formErrors.endDate}</span>}
             </div>
           <Button size="sm" variant="solid" loading={loading} disabled={loading}>{loading ? 'Saving...' : 'Add Goal'}</Button>
-          {error && <span className="text-red-400 ml-2" role="alert">{error}</span>}
+          {error && <span className="text-status-danger ml-2" role="alert">{error}</span>}
         </form>
       </Card>
-  <Card className="p-3 space-y-2 bg-[var(--color-bg-muted)] border-[color:var(--color-border)]">
+  <Card className="p-3 space-y-2" muted>
         {items.map(g => {
           const pctRaw = g.type === 'AVG_LOSS_CAP'
             ? (g.targetValue > 0 ? Math.min(100, (Math.max(0, g.targetValue - g.currentValue) / g.targetValue) * 100) : 0)
@@ -195,7 +201,7 @@ function GoalsClient({ initial }: { initial: GoalItem[] }) {
           const currentDisplay = formatValue(g.type === 'WIN_RATE' ? g.currentValue : g.currentValue);
           const targetDisplay = formatValue(g.type === 'WIN_RATE' ? g.targetValue : g.targetValue);
           return (
-            <div key={g.id} className="rounded p-3 bg-[var(--color-bg-muted)] border border-[var(--color-border-strong)]">
+            <Card key={g.id} className="p-3" muted>
               <div className="flex justify-between text-xs mb-1">
                 <Tooltip content={description}>
                   <span className="text-[var(--color-text)]/80 font-medium cursor-help">{label} ({g.period})</span>
@@ -203,13 +209,13 @@ function GoalsClient({ initial }: { initial: GoalItem[] }) {
                 <span className="text-[var(--color-muted)] font-mono">{currentDisplay} / {targetDisplay}</span>
               </div>
               <div className="h-2 rounded bg-[var(--color-bg-inset)] overflow-hidden" role="progressbar" aria-label={`${label} progress`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct}>
-                <div className={`h-full transition-all duration-300 ease-in-out ${achieved ? 'bg-green-500' : 'bg-blue-500'}`} style={{ width: pct.toFixed(2) + '%' }} />
+                <div className={`h-full transition-all duration-300 ease-in-out ${achieved ? 'bg-[var(--color-success)]' : 'bg-[var(--color-accent)]'}`} style={{ width: pct.toFixed(2) + '%' }} />
               </div>
               <div className="flex justify-between items-center mt-1">
-                {achieved ? <span className="text-[10px] text-green-400">Achieved</span> : <span className="text-[10px] text-[var(--color-muted)]">In progress</span>}
-                <button onClick={()=>deleteGoal(g.id)} className="text-[10px] text-red-400 hover:underline focus-ring rounded px-1">Delete</button>
+                {achieved ? <span className="text-[10px] text-status-success">Achieved</span> : <span className="text-[10px] text-[var(--color-muted)]">In progress</span>}
+                <button onClick={()=>deleteGoal(g.id)} className="text-[10px] text-status-danger hover:underline focus-ring rounded px-1">Delete</button>
               </div>
-            </div>
+            </Card>
           );
         })}
   {!items.length && <p className="text-xs text-[var(--color-muted)]">No goals yet.</p>}

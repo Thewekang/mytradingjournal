@@ -1,0 +1,1 @@
+-- NO-OP placeholder (CronRun table creation deferred due to drift policy)

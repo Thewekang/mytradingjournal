@@ -23,6 +23,10 @@ export default defineConfig({
     globals: true,
     include: ['lib/**/*.test.ts', 'tests/**/*.{test,a11y}.ts?(x)'],
     setupFiles: ['./vitest.setup.ts'],
+  restoreMocks: true,
+  clearMocks: true,
+  mockReset: true,
+  isolate: true,
     coverage: {
       provider: 'v8',
       reporter: ['text', 'lcov'],
@@ -42,8 +46,15 @@ export default defineConfig({
     }
   },
   resolve: {
-    alias: {
-      '@': path.resolve(__dirname, './')
-    }
+    alias: ((): Record<string, string> => {
+      const aliases: Record<string, string> = {
+        '@': path.resolve(__dirname, './')
+      };
+      if (process.env.FOCUS_TEST === '1') {
+        // Stub Prisma client in focus runs to avoid native engine on Windows
+        aliases['@prisma/client'] = path.resolve(__dirname, './tests/mocks/prisma-client.ts');
+      }
+      return aliases;
+    })()
   }
 });

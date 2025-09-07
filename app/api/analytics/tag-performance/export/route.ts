@@ -2,19 +2,26 @@ import { getSessionUser } from '@/lib/session';
 import { prisma } from '@/lib/prisma';
 import { computeRealizedPnl } from '@/lib/services/trade-service';
 import { rowsToCsvStream } from '@/lib/export/csv';
+import { getFxRate, convertAmount } from '@/lib/services/fx-service';
 
 export async function GET(request: Request){
   const user = await getSessionUser();
   if(!user) return new Response('Unauthorized',{status:401});
   const { searchParams } = new URL(request.url);
   const format = (searchParams.get('format')||'csv').toLowerCase();
-  const links = await prisma.tradeTagOnTrade.findMany({ where:{ trade:{ userId: user.id, status:'CLOSED', deletedAt:null, exitAt:{ not:null } } }, include:{ tag:true, trade:{ include:{ instrument:{ select:{ contractMultiplier:true } } } } } });
+  const links = await prisma.tradeTagOnTrade.findMany({ where:{ trade:{ userId: user.id, status:'CLOSED', deletedAt:null, exitAt:{ not:null } } }, include:{ tag:true, trade:{ include:{ instrument:{ select:{ contractMultiplier:true, currency:true } } } } } });
+  const settings = await prisma.journalSettings.findUnique({ where: { userId: user.id } });
+  const ENABLE_FX = process.env.ENABLE_FX_CONVERSION === '1';
   const map: Record<string, { label:string; color:string; trades:number; wins:number; losses:number; sumPnl:number; }> = {};
   for(const l of links){
   const t = l.trade; const pnl = computeRealizedPnl({ entryPrice:t.entryPrice, exitPrice:t.exitPrice??undefined, quantity:t.quantity, direction:t.direction, fees:t.fees, contractMultiplier:t.instrument?.contractMultiplier ?? undefined });
     if(pnl==null) continue;
+    const base = settings?.baseCurrency || 'USD';
+    const quote = t.instrument?.currency || base;
+    const rate = ENABLE_FX ? await getFxRate((t.exitAt as Date).toISOString().slice(0,10), quote, base) : null;
+    const pnlConv = convertAmount(pnl, rate);
     const bucket = map[l.tagId] || (map[l.tagId] = { label:l.tag.label, color:l.tag.color, trades:0, wins:0, losses:0, sumPnl:0 });
-    bucket.trades++; if(pnl>=0) bucket.wins++; else bucket.losses++; bucket.sumPnl += pnl;
+    bucket.trades++; if(pnlConv>=0) bucket.wins++; else bucket.losses++; bucket.sumPnl += pnlConv;
   }
   const rows = Object.entries(map).map(([tagId,r])=>({ tagId, label:r.label, trades:r.trades, wins:r.wins, losses:r.losses, winRate: r.trades? +(r.wins/r.trades).toFixed(4):0, sumPnl:+r.sumPnl.toFixed(2), avgPnl: r.trades? +(r.sumPnl/r.trades).toFixed(2):0 })).sort((a,b)=>Math.abs(b.sumPnl)-Math.abs(a.sumPnl));
   if(format==='json') return new Response(JSON.stringify({ columns:['tagId','label','trades','wins','losses','winRate','sumPnl','avgPnl'], rows }),{status:200, headers:{'Content-Type':'application/json'}});

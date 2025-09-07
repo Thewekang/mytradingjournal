@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { recalcGoalsForUser } from '@/lib/services/goal-service';
 
 describe('Rolling 30D PnL Goal', () => {
-  it('aggregates only last 30 days closed trades', async () => {
+  it('aggregates only last 30 days closed trades', { timeout: 10000 }, async () => {
     const user = await prisma.user.create({ data: { email: `roll30-${Date.now()}@ex.com`, passwordHash: 'x' } });
     await prisma.journalSettings.create({ data: { userId: user.id } });
     const inst = await prisma.instrument.create({ data: { symbol: `R30${Date.now()}`, name: 'R30', category: 'Futures', currency: 'USD', tickSize: 0.25, contractMultiplier: 1 } });

@@ -3,7 +3,7 @@ import { authOptions } from '@/lib/auth-options';
 import { isSessionUser } from '@/lib/session';
 import { prisma } from '@/lib/prisma';
 import { RouteContext } from '@/lib/api/params';
-import { unauthorized, forbidden, notFound, internal } from '@/lib/errors';
+import { unauthorized, forbidden, notFound, internal, isApiErrorShape, httpStatusForError, mapPrismaError } from '@/lib/errors';
 import { withLogging, jsonError, jsonOk } from '@/lib/api/logger-wrapper';
 
 async function _POST(_req: Request, { params }: RouteContext<{ id: string }>) {
@@ -16,7 +16,10 @@ async function _POST(_req: Request, { params }: RouteContext<{ id: string }>) {
     if (!existing) return jsonError(notFound(), 404);
     const updated = await prisma.instrument.update({ where: { id: params.id }, data: { isActive: false } });
     return jsonOk(updated);
-  } catch {
+  } catch (e) {
+    // Map known Prisma errors to normalized API errors for consistent status codes
+    const mapped = mapPrismaError(e);
+    if (isApiErrorShape(mapped)) return jsonError(mapped, httpStatusForError(mapped));
     return jsonError(internal(), 500);
   }
 }

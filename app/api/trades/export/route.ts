@@ -1,6 +1,7 @@
 import { getSessionUser } from '@/lib/session';
 import { listTrades } from '@/lib/services/trade-service';
-import { rowsToCsv } from '@/lib/export/csv';
+import { rowsToCsv, csvEscape } from '@/lib/export/csv';
+import { getExportStreamingRowThreshold, getExportStreamingChunkSize } from '@/lib/constants';
 // Dynamic import for XLSX to keep base bundle smaller
 interface ExportRow { [k: string]: string | number | '' }
 async function generateXlsx(rows: ExportRow[], headers: string[]) {
@@ -59,7 +60,27 @@ export async function GET(req: Request) {
     const bin = await generateXlsx(rows, cols);
     return new Response(bin, { status: 200, headers: { 'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'Content-Disposition': 'attachment; filename="trades-export.xlsx"' } });
   }
-  // default CSV
-  const csv = rowsToCsv(cols, rows as unknown as Record<string, unknown>[]);
-  return new Response(csv, { status: 200, headers: { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': 'attachment; filename="trades-export.csv"' } });
+  // default CSV (stream if large)
+  if (rows.length > getExportStreamingRowThreshold()) {
+    async function *gen(){
+      yield cols.join(',') + '\n';
+      let buffer: string[] = [];
+      for (const r of rows) {
+        buffer.push(cols.map(h => csvEscape(r[h])).join(','));
+  if (buffer.length >= getExportStreamingChunkSize()) { yield buffer.join('\n') + '\n'; buffer = []; }
+      }
+      if (buffer.length) yield buffer.join('\n') + '\n';
+      yield `# streamed_rows=${rows.length}\n`;
+    }
+    const stream = new ReadableStream({
+      async start(controller){
+        const enc = new TextEncoder();
+        try { for await (const chunk of gen()) controller.enqueue(enc.encode(chunk)); controller.close(); } catch(e){ controller.error(e); }
+      }
+    });
+    return new Response(stream, { status:200, headers: { 'Content-Type':'text/csv; charset=utf-8', 'Content-Disposition':'attachment; filename="trades-export.csv"', 'X-Streamed':'1' } });
+  } else {
+    const csv = rowsToCsv(cols, rows as unknown as Record<string, unknown>[]);
+    return new Response(csv, { status: 200, headers: { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': 'attachment; filename="trades-export.csv"' } });
+  }
 }

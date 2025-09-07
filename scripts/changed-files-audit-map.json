@@ -1,0 +1,21 @@
+{
+  "$schema": "./changed-files-audit-map.schema.json",
+  "groups": {
+    "tokens": ["app/globals.css"],
+    "ui": ["components/ui"],
+    "pages_dashboard": ["app/dashboard", "components/dashboard"],
+    "pages_trades": ["app/trades"],
+    "pages_goals": ["app/goals"],
+    "pages_settings": ["app/settings"],
+    "lib_analytics": ["lib/analytics", "lib/analytics.ts", "lib/analytics-cache.ts"],
+    "lib_export": ["lib/api/export", "lib/services/export-job-service.ts"]
+  },
+  "pageDependencies": {
+    "/": ["tokens", "ui"],
+    "/dashboard": ["tokens", "ui", "pages_dashboard", "lib_analytics"],
+    "/trades": ["tokens", "ui", "pages_trades"],
+    "/goals": ["tokens", "ui", "pages_goals"],
+    "/settings": ["tokens", "ui", "pages_settings"],
+    "/exports": ["tokens", "ui", "lib_export"]
+  }
+}

@@ -19,7 +19,7 @@
     "jsx": "preserve",
     "types": [
       "node",
-      "vitest/globals"
+  "vitest/globals"
     ],
     "incremental": true,
     "plugins": [

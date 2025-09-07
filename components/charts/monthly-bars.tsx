@@ -16,8 +16,8 @@ export function MonthlyBars({ data }: { data: MonthlyPoint[] }) {
           <XAxis dataKey="month" tick={{ fontSize: 10 }} />
           <YAxis tick={{ fontSize: 10 }} width={50} />
           <Tooltip formatter={(val: unknown)=>[val as number,'P/L'] as [number,string]} />
-          <ReferenceLine y={0} stroke="#666" strokeDasharray="3 3" />
-          <Bar dataKey="pnl" fill="#6366f1" radius={[3,3,0,0]} />
+          <ReferenceLine y={0} stroke="var(--color-chart-neutral)" strokeDasharray="3 3" />
+          <Bar dataKey="pnl" fill="var(--color-chart-accent)" radius={[3,3,0,0]} />
         </BarChart>
       </ResponsiveContainer>
     </div>

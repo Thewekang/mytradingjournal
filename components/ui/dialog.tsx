@@ -28,9 +28,14 @@ export function Dialog({ open, onOpenChange, title, description, children, width
     }
   }, [open]);
 
-  // Focus trap & initial focus
+  // Focus trap, capture opener, & initial focus
   useEffect(() => {
     if (!open) return;
+    // capture the element that was focused just before opening
+    const active = document.activeElement;
+    if (active && active instanceof HTMLElement) {
+      openerRef.current = active;
+    }
     const panel = panelRef.current;
     if (!panel) return;
     const focusables = () => Array.from(panel.querySelectorAll<HTMLElement>(
@@ -50,31 +55,33 @@ export function Dialog({ open, onOpenChange, title, description, children, width
       }
     }
     document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
+    // On close (effect cleanup) restore focus to opener if still in the document
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      if (openerRef.current && document.contains(openerRef.current)) {
+        try { openerRef.current.focus(); } catch { /* ignore */ }
+      }
+      openerRef.current = null;
+    };
   }, [open, onOpenChange, initialFocusRef]);
-
-  // return focus to opener element
-  useEffect(() => {
-    if (!open && openerRef.current) {
-      openerRef.current.focus();
-    }
-  }, [open]);
 
   if (!open) return null;
   return (
     <div ref={overlayRef} className="fixed inset-0 z-50 flex items-start justify-center p-4 overflow-y-auto">
-      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => onOpenChange(false)} aria-hidden />
-  <div ref={panelRef} role="dialog" aria-modal="true" aria-labelledby={title ? titleId.current : undefined} className={clsx('relative bg-[var(--color-bg-alt)] border border-[var(--color-border)] rounded-lg shadow-lg mt-16 w-full', widthClass, 'focus-ring')}>
+      <div className="fixed inset-0 bg-[var(--color-backdrop)] backdrop-blur-sm" onClick={() => onOpenChange(false)} aria-hidden />
+  <div ref={panelRef} role="dialog" aria-modal="true" aria-labelledby={title ? titleId.current : undefined} className={clsx('relative bg-[var(--color-bg-alt)] border border-[var(--color-border)] rounded-lg shadow-[var(--elevation-3)] mt-16 w-full', widthClass, 'focus-ring')} data-component="dialog">
+        <span tabIndex={0} aria-hidden data-focus-guard className="absolute outline-none w-px h-px -m-px overflow-hidden" />
         {title && (
           <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--color-border)]">
             <h2 id={titleId.current} className="text-sm font-semibold">{title}</h2>
-            <button type="button" aria-label="Close" onClick={() => onOpenChange(false)} className="text-[var(--color-muted)] hover:text-[var(--color-text)] focus-ring rounded px-1 py-0.5">✕</button>
+            <button type="button" aria-label="Close dialog" onClick={() => onOpenChange(false)} className="text-[var(--color-muted)] hover:text-[var(--color-text)] focus-ring rounded px-1 py-0.5" data-component="dialog-close">✕</button>
           </div>
         )}
         {description && <p className="px-4 pt-3 text-xs text-[var(--color-muted)]">{description}</p>}
-        <div className="p-4 pt-3">
+  <div className="p-4 pt-3">
           {children}
         </div>
+  <span tabIndex={0} aria-hidden data-focus-guard className="absolute outline-none w-px h-px -m-px overflow-hidden" />
       </div>
     </div>
   );

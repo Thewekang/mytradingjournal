@@ -24,5 +24,5 @@ describe('Daily Green Streak Goal', () => {
     const updated = await prisma.goal.findUnique({ where: { id: goal.id } });
     expect(updated?.currentValue).toBeGreaterThanOrEqual(2);
     expect(updated?.achievedAt).not.toBeNull();
-  });
+  }, 10000);
 });

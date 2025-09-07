@@ -25,7 +25,14 @@ describe('New goal types recalculation', () => {
       { userId: user.id, type: 'AVG_LOSS_CAP', period: 'MONTH', targetValue: 50, currentValue: 0, startDate: start, endDate: end }
     ] });
     await recalcGoalsForUser(user.id);
-    const goals = await prisma.goal.findMany({ where: { userId: user.id } });
+    // Poll (in case future debounce introduced) up to 3s
+    let goals = await prisma.goal.findMany({ where: { userId: user.id } });
+    const t0 = Date.now();
+    while (Date.now() - t0 < 3000) {
+      if (goals.every(g=>g.currentValue && g.currentValue > 0)) break;
+      await new Promise(r=>setTimeout(r,100));
+      goals = await prisma.goal.findMany({ where: { userId: user.id } });
+    }
   type GoalRec = typeof goals[number];
   const pf = goals.find((g: GoalRec)=>g.type==='PROFIT_FACTOR');
   const exp = goals.find((g: GoalRec)=>g.type==='EXPECTANCY');
@@ -37,5 +44,5 @@ describe('New goal types recalculation', () => {
     expect(exp?.currentValue).toBeGreaterThan(30);
     // avg loss = 40, target 50 => should be achieved and <= target
     expect(lossCap?.currentValue).toBeLessThanOrEqual(50);
-  });
+  }, 10000);
 });

@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, cleanup } from '@testing-library/react';
+import { render, cleanup, act } from '@testing-library/react';
 import { describe, it, afterEach, expect } from 'vitest';
 import { EquityCurve } from '../components/charts/equity-curve';
 import { MonthlyBars } from '../components/charts/monthly-bars';
@@ -18,17 +18,17 @@ const monthly = [
 describe('Charts accessibility', () => {
   afterEach(() => cleanup());
   it('EquityCurve has no serious violations', async () => {
-    render(<EquityCurve points={eqPoints} />);
+  await act(async () => { render(<EquityCurve points={eqPoints} />); });
     const r = await runAxeFiltered();
     expect(r.violations.filter(v => ['serious','critical'].includes(v.impact || '') )).toHaveLength(0);
   });
   it('MonthlyBars has no serious violations', async () => {
-    render(<MonthlyBars data={monthly} />);
+  await act(async () => { render(<MonthlyBars data={monthly} />); });
     const r = await runAxeFiltered();
     expect(r.violations.filter(v => ['serious','critical'].includes(v.impact || '') )).toHaveLength(0);
   });
   it('WinLossDonut has no serious violations', async () => {
-    render(<WinLossDonut wins={5} losses={3} breakeven={1} />);
+  await act(async () => { render(<WinLossDonut wins={5} losses={3} breakeven={1} />); });
     const r = await runAxeFiltered();
     expect(r.violations.filter(v => ['serious','critical'].includes(v.impact || '') )).toHaveLength(0);
   });

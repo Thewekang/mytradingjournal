@@ -6,6 +6,8 @@ import { computeRealizedPnl } from '@/lib/services/trade-service';
 import { getAnalyticsCache, setAnalyticsCache } from '@/lib/analytics-cache';
 import { ResponseEnvelope, DailyPnlPayload } from '@/types/api';
 import { withLogging, jsonError, jsonOk } from '@/lib/api/logger-wrapper';
+import { runInSpan } from '@/lib/observability';
+import { getFxRate, convertAmount } from '@/lib/services/fx-service';
 
 // Aggregates realized P/L per day (UTC) for closed trades within an optional lookback window (default 60 days)
 async function _GET(request: Request) {
@@ -21,20 +23,28 @@ async function _GET(request: Request) {
   const cacheKey = `daily:${days}`;
   const cached = getAnalyticsCache(userId, cacheKey) as DailyPnlPayload | null;
   if (cached) return new Response(JSON.stringify({ data: cached, error: null } as ResponseEnvelope<DailyPnlPayload>), { status: 200 });
-  const trades = await prisma.trade.findMany({
+  const trades = await runInSpan('analytics.daily.fetch', { userId, days }, async () => await prisma.trade.findMany({
       where: { userId, status: 'CLOSED', deletedAt: null, exitAt: { not: null, gte: since } },
       orderBy: { exitAt: 'asc' },
-      include: { instrument: { select: { contractMultiplier: true } } }
+      include: { instrument: { select: { contractMultiplier: true, currency: true } } }
+    }));
+    const settings = await prisma.journalSettings.findUnique({ where: { userId } });
+    const ENABLE_FX = process.env.ENABLE_FX_CONVERSION === '1';
+    const daysArr = await runInSpan('analytics.daily.compute', { userId, days }, async () => {
+      const daily: Record<string, number> = {};
+      for (const t of trades) {
+        if (!t.exitAt) continue;
+        const pnl = computeRealizedPnl({ entryPrice: t.entryPrice, exitPrice: t.exitPrice ?? undefined, quantity: t.quantity, direction: t.direction, fees: t.fees, contractMultiplier: t.instrument?.contractMultiplier ?? undefined });
+        if (pnl == null) continue;
+        const base = settings?.baseCurrency || 'USD';
+        const quote = t.instrument?.currency || base;
+        const rate = ENABLE_FX ? await getFxRate(t.exitAt.toISOString().slice(0,10), quote, base) : null;
+        const pnlConv = convertAmount(pnl, rate);
+        const dateKey = t.exitAt.toISOString().slice(0, 10); // YYYY-MM-DD
+        daily[dateKey] = (daily[dateKey] || 0) + pnlConv;
+      }
+      return Object.entries(daily).sort((a,b) => a[0].localeCompare(b[0])).map(([date, pnl]) => ({ date, pnl: +pnl.toFixed(2) }));
     });
-    const daily: Record<string, number> = {};
-    for (const t of trades) {
-      if (!t.exitAt) continue;
-      const pnl = computeRealizedPnl({ entryPrice: t.entryPrice, exitPrice: t.exitPrice ?? undefined, quantity: t.quantity, direction: t.direction, fees: t.fees, contractMultiplier: t.instrument?.contractMultiplier ?? undefined });
-      if (pnl == null) continue;
-      const dateKey = t.exitAt.toISOString().slice(0, 10); // YYYY-MM-DD
-      daily[dateKey] = (daily[dateKey] || 0) + pnl;
-    }
-    const daysArr = Object.entries(daily).sort((a,b) => a[0].localeCompare(b[0])).map(([date, pnl]) => ({ date, pnl: +pnl.toFixed(2) }));
   const payload: DailyPnlPayload = { days: daysArr };
   setAnalyticsCache(userId, cacheKey, payload, 60_000);
   return jsonOk(payload);
