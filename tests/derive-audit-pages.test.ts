@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+// @ts-expect-error - Import .mjs file in TypeScript test
 import { computeDerivedPages } from '../scripts/derive-audit-pages-core.mjs';
 
 const map = {
