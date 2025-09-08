@@ -10,9 +10,17 @@ async function safe(req: Request, ctx: unknown) {
 	// If ctx missing expected shape, return a 400 to avoid noisy stack traces.
 	// (No explicit typing to prevent Next.js route type inference mismatch.)
 		// @ts-expect-error dynamic route context shape not inferred here
-	if (!ctx || !ctx.params || !Array.isArray(ctx.params.nextauth)) {
+	if (!ctx || !ctx.params) {
 		return new Response(JSON.stringify({ data: null, error: { code: 'BAD_REQUEST', message: 'Missing auth action segment' } }), { status: 400, headers: { 'Content-Type': 'application/json' } });
 	}
+	
+	// Await params for Next.js 15 compatibility
+	// @ts-expect-error dynamic route context shape not inferred here
+	const params = await ctx.params;
+	if (!Array.isArray(params.nextauth)) {
+		return new Response(JSON.stringify({ data: null, error: { code: 'BAD_REQUEST', message: 'Missing auth action segment' } }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+	}
+	
 	return handler(req, ctx);
 }
 

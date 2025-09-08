@@ -10,7 +10,7 @@ export function PropEvaluationCard() {
 
   if (error) {
     return (
-      <Card className="p-4" muted>
+      <Card className="p-4 opacity-75">
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-sm font-semibold">Prop Evaluation</h3>
           <button className="text-[10px] text-[var(--color-accent)] underline" onClick={()=>refresh()}>Retry</button>
@@ -22,7 +22,7 @@ export function PropEvaluationCard() {
 
   if (loading && !progress) {
     return (
-      <Card className="p-4" muted>
+      <Card className="p-4 opacity-75">
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-sm font-semibold">Prop Evaluation</h3>
         </div>
@@ -33,7 +33,7 @@ export function PropEvaluationCard() {
 
   if (!progress || !progress.active) {
     return (
-      <Card className="p-4" muted>
+      <Card className="p-4 opacity-75">
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-sm font-semibold">Prop Evaluation</h3>
           <button className="text-[10px] text-[var(--color-accent)] underline" onClick={()=>refresh()}>Refresh</button>
@@ -53,7 +53,7 @@ export function PropEvaluationCard() {
   }
 
   return (
-    <Card className="p-4" muted>
+    <Card className="p-4 opacity-75">
       <div className="flex items-center justify-between mb-2">
         <h3 className="text-sm font-semibold">Prop Evaluation</h3>
         <button className="text-[10px] text-[var(--color-accent)] underline" onClick={()=>refresh()}>Refresh</button>

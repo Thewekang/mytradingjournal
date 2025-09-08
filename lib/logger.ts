@@ -16,10 +16,11 @@ const level = process.env.LOG_LEVEL || (process.env.NODE_ENV === 'production' ? 
 const baseOptions: LoggerOptions = {
   level,
   redact: redaction,
-  transport: process.env.NODE_ENV !== 'production' ? {
-    target: 'pino-pretty',
-    options: { colorize: true, translateTime: 'SYS:standard', singleLine: true }
-  } : undefined,
+  // Temporarily disable pino-pretty transport to fix worker thread issues
+  // transport: process.env.NODE_ENV !== 'production' ? {
+  //   target: 'pino-pretty',
+  //   options: { colorize: true, translateTime: 'SYS:standard', singleLine: true }
+  // } : undefined,
   base: { app: 'trading-journal' }
 };
 

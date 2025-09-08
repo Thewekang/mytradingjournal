@@ -8,32 +8,73 @@ export default {
   theme: {
     extend: {
       colors: {
+        // shadcn/ui theme colors
+        background: "var(--background)",
+        foreground: "var(--foreground)",
+        card: {
+          DEFAULT: "var(--card)",
+          foreground: "var(--card-foreground)",
+        },
+        popover: {
+          DEFAULT: "var(--popover)",
+          foreground: "var(--popover-foreground)",
+        },
+        primary: {
+          DEFAULT: "var(--primary)",
+          foreground: "var(--primary-foreground)",
+        },
+        secondary: {
+          DEFAULT: "var(--secondary)",
+          foreground: "var(--secondary-foreground)",
+        },
+        muted: {
+          DEFAULT: "var(--muted)",
+          foreground: "var(--muted-foreground)",
+        },
+        accent: {
+          DEFAULT: "var(--accent)",
+          foreground: "var(--accent-foreground)",
+        },
+        destructive: {
+          DEFAULT: "var(--destructive)",
+          foreground: "var(--destructive-foreground)",
+        },
+        border: "var(--border)",
+        input: "var(--input)",
+        ring: "var(--ring)",
+        chart: {
+          "1": "var(--chart-1)",
+          "2": "var(--chart-2)",
+          "3": "var(--chart-3)",
+          "4": "var(--chart-4)",
+          "5": "var(--chart-5)",
+        },
+        sidebar: {
+          DEFAULT: "var(--sidebar)",
+          foreground: "var(--sidebar-foreground)",
+          primary: "var(--sidebar-primary)",
+          "primary-foreground": "var(--sidebar-primary-foreground)",
+          accent: "var(--sidebar-accent)",
+          "accent-foreground": "var(--sidebar-accent-foreground)",
+          border: "var(--sidebar-border)",
+          ring: "var(--sidebar-ring)",
+        },
         // Brand (kept for legacy usage)
         brand: {
           DEFAULT: 'var(--color-accent)',
           foreground: 'var(--color-accent-foreground)',
           hover: 'var(--color-accent-hover)'
         },
-        // Semantic colors mapped to CSS variables (light/dark via data-theme)
+        // Legacy semantic colors mapped to CSS variables (light/dark via data-theme)
         surface: 'var(--color-bg)',
         'surface-alt': 'var(--color-bg-alt)',
         'surface-muted': 'var(--color-bg-muted)',
         'surface-inset': 'var(--color-bg-inset)',
         text: 'var(--color-text)',
-        muted: 'var(--color-muted)',
-        accent: {
-          DEFAULT: 'var(--color-accent)',
-          foreground: 'var(--color-accent-foreground)',
-          hover: 'var(--color-accent-hover)'
-        },
         success: 'var(--color-success)',
         danger: 'var(--color-danger)',
         warning: 'var(--color-warning)',
         info: 'var(--color-info)',
-        border: {
-          DEFAULT: 'var(--color-border)',
-          strong: 'var(--color-border-strong)'
-        },
         focus: 'var(--color-focus)'
       },
       // Map spacing scale to CSS variables (4px baseline)

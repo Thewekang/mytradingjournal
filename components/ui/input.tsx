@@ -1,39 +1,22 @@
-"use client";
-import React from 'react';
-import clsx from 'clsx';
+import * as React from "react"
 
-export interface InputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'size'> {
-  fieldSize?: 'sm' | 'md';
-  variant?: 'default' | 'inset';
-  invalid?: boolean;
-}
+import { cn } from "@/lib/utils"
 
-const sizeMap = {
-  sm: 'h-8 text-xs px-2 rounded',
-  md: 'h-9 text-sm px-3 rounded'
-};
+const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
+  ({ className, type, ...props }, ref) => {
+    return (
+      <input
+        type={type}
+        className={cn(
+          "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
+          className
+        )}
+        ref={ref}
+        {...props}
+      />
+    )
+  }
+)
+Input.displayName = "Input"
 
-export const Input = React.forwardRef<HTMLInputElement, InputProps>(function Input(
-  { className, fieldSize='md', variant='default', invalid=false, disabled, ...rest }, ref
-) {
-  const surface = variant === 'inset' ? 'bg-[var(--color-bg-inset)]' : 'bg-[var(--color-bg-alt)]';
-  return (
-    <input
-      ref={ref}
-      data-invalid={invalid || undefined}
-      className={clsx(
-        'focus-ring transition-colors border',
-        surface,
-        'border-[var(--color-border-strong)]',
-        'placeholder:text-[var(--color-muted)]',
-  sizeMap[fieldSize],
-  invalid && 'outline-none focus-ring ring-1 ring-[var(--color-danger-ring)] border-[var(--color-danger-border)]',
-        disabled && 'opacity-60 cursor-not-allowed',
-        className
-      )}
-      aria-invalid={invalid || undefined}
-      disabled={disabled}
-      {...rest}
-    />
-  );
-});
+export { Input }

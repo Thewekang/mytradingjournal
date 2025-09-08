@@ -22,6 +22,7 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   trades        Trade[]
+  strategies    Strategy[]
   journalSettings JournalSettings?
   tradeTags     TradeTag[]
   goals         Goal[]
@@ -68,12 +69,29 @@ model TradeTagOnTrade {
   @@index([tradeId])
 }
 
+model Strategy {
+  id          String      @id @default(cuid())
+  user        User        @relation(fields: [userId], references: [id])
+  userId      String
+  name        String
+  description String?
+  status      String      @default("OPEN") // OPEN, CLOSED
+  trades      Trade[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  deletedAt   DateTime?   // soft delete marker
+
+  @@index([userId])
+}
+
 model Trade {
   id          String      @id @default(cuid())
   user        User        @relation(fields: [userId], references: [id])
   userId      String
   instrument  Instrument  @relation(fields: [instrumentId], references: [id])
   instrumentId String
+  strategy    Strategy?   @relation(fields: [strategyId], references: [id])
+  strategyId  String?
   direction   TradeDirection
   entryPrice  Float
   exitPrice   Float?
@@ -95,6 +113,7 @@ model Trade {
   @@index([userId, deletedAt])
   @@index([userId, exitAt])
   @@index([userId, status, exitAt])
+  @@index([strategyId])
 }
 
 enum TradeDirection {

@@ -12,15 +12,17 @@ import { Tooltip } from '@/components/ui/tooltip';
 import { Card } from '@/components/ui/card';
 import { PropEvaluationCard } from '@/components/dashboard/prop-evaluation-card';
 
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3001');
+
 async function fetchSummary() {
-  const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || ''}/api/analytics/summary`, { cache: 'no-store' });
+  const res = await fetch(`${BASE_URL}/api/analytics/summary`, { cache: 'no-store' });
   if (!res.ok) return null;
   return (await res.json()).data;
 }
 
 interface EquityPointApi { date: string; equity: number }
 async function fetchEquity(): Promise<EquityPointApi[]> {
-  const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || ''}/api/analytics/equity`, { cache: 'no-store' });
+  const res = await fetch(`${BASE_URL}/api/analytics/equity`, { cache: 'no-store' });
   if (!res.ok) return [];
   const json = await res.json();
   return json.data?.points || [];
@@ -28,7 +30,7 @@ async function fetchEquity(): Promise<EquityPointApi[]> {
 
 interface DailyDay { date: string; pnl: number }
 async function fetchDaily(): Promise<DailyDay[]> {
-  const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || ''}/api/analytics/daily?days=60`, { cache: 'no-store' });
+  const res = await fetch(`${BASE_URL}/api/analytics/daily?days=60`, { cache: 'no-store' });
   if (!res.ok) return [];
   const json = await res.json();
   return json.data?.days || [];
@@ -36,7 +38,7 @@ async function fetchDaily(): Promise<DailyDay[]> {
 
 interface MonthlyRow { month: string; pnl: number }
 async function fetchMonthly(): Promise<MonthlyRow[]> {
-  const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || ''}/api/analytics/monthly?months=12`, { cache: 'no-store' });
+  const res = await fetch(`${BASE_URL}/api/analytics/monthly?months=12`, { cache: 'no-store' });
   if (!res.ok) return [];
   const json = await res.json();
   return json.data?.months || [];
@@ -44,7 +46,7 @@ async function fetchMonthly(): Promise<MonthlyRow[]> {
 
 interface Distribution { wins: number; losses: number; breakeven: number; winRate: number }
 async function fetchDistribution(): Promise<Distribution | null> {
-  const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || ''}/api/analytics/distribution`, { cache: 'no-store' });
+  const res = await fetch(`${BASE_URL}/api/analytics/distribution`, { cache: 'no-store' });
   if (!res.ok) return null;
   const json = await res.json();
   return json.data;
@@ -52,7 +54,7 @@ async function fetchDistribution(): Promise<Distribution | null> {
 
 interface Drawdown { maxDrawdown: number }
 async function fetchDrawdown(): Promise<Drawdown | null> {
-  const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || ''}/api/analytics/drawdown`, { cache: 'no-store' });
+  const res = await fetch(`${BASE_URL}/api/analytics/drawdown`, { cache: 'no-store' });
   if (!res.ok) return null;
   const json = await res.json();
   return json.data;
@@ -60,7 +62,7 @@ async function fetchDrawdown(): Promise<Drawdown | null> {
 
 interface TagPerf { tagId: string; label: string; color: string; trades: number; wins: number; losses: number; winRate: number; sumPnl: number; avgPnl: number }
 async function fetchTagPerformance(): Promise<TagPerf[]> {
-  const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || ''}/api/analytics/tag-performance`, { cache: 'no-store' });
+  const res = await fetch(`${BASE_URL}/api/analytics/tag-performance`, { cache: 'no-store' });
   if (!res.ok) return [];
   const json = await res.json();
   return json.data?.tags || [];
@@ -68,7 +70,7 @@ async function fetchTagPerformance(): Promise<TagPerf[]> {
 
 interface GoalRow { id: string; type: string; period: string; targetValue: number; currentValue: number; achievedAt: string | null }
 async function fetchGoals(): Promise<GoalRow[]> {
-  const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || ''}/api/goals`, { cache: 'no-store' });
+  const res = await fetch(`${BASE_URL}/api/goals`, { cache: 'no-store' });
   if (!res.ok) return [];
   const json = await res.json();
   return json.data || [];
@@ -76,7 +78,7 @@ async function fetchGoals(): Promise<GoalRow[]> {
 
 interface RiskBreach { id: string; type: string; message: string; value: number; limit: number; createdAt: string }
 async function fetchRiskBreaches(): Promise<RiskBreach[]> {
-  const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || ''}/api/risk/breaches`, { cache: 'no-store' });
+  const res = await fetch(`${BASE_URL}/api/risk/breaches`, { cache: 'no-store' });
   if (!res.ok) return [];
   const json = await res.json();
   return json.data || [];
@@ -113,7 +115,7 @@ export default async function DashboardPage() {
             const achieved = g.achievedAt != null;
             const label = g.type === 'TOTAL_PNL' ? 'Total P/L' : g.type === 'TRADE_COUNT' ? 'Trade Count' : 'Win Rate %';
             return (
-      <Card key={g.id} className="p-3" muted>
+      <Card key={g.id} className="p-3 opacity-75">
                 <div className="flex justify-between text-[11px] mb-1">
                   <span className="text-[var(--color-text)]/80">{label} ({g.period})</span>
                   <span className="text-[var(--color-muted)]">{g.currentValue.toFixed(2)} / {g.targetValue}</span>
@@ -143,7 +145,7 @@ export default async function DashboardPage() {
   {breaches.length === 0 && <p className="text-xs text-[var(--color-muted)]">No breaches logged today.</p>}
         <ul className="space-y-2">
           {breaches.map((b: RiskBreach) => (
-    <Card key={b.id} className="p-2 text-[11px]" muted>
+    <Card key={b.id} className="p-2 text-[11px] opacity-75">
               <div className="flex justify-between">
                 <span className="font-medium text-status-danger">{b.type}</span>
                 <time className="text-[var(--color-muted)]" dateTime={b.createdAt}>{new Date(b.createdAt).toLocaleTimeString()}</time>
@@ -156,21 +158,21 @@ export default async function DashboardPage() {
       </section>
       <section>
         <h2 className="text-sm font-semibold mb-2">Equity Curve</h2>
-  <Card className="p-4" muted>
+  <Card className="p-4 opacity-75">
           <EquityCurve points={points} />
           {!points.length && <p className="text-xs text-[var(--color-muted)] mt-2">No closed trades yet.</p>}
     </Card>
       </section>
       <section>
         <h2 className="text-sm font-semibold mb-2">Monthly Performance (Last 12 Months)</h2>
-  <Card className="p-4" muted>
+  <Card className="p-4 opacity-75">
           <MonthlyBars data={monthly} />
           {!monthly.length && <p className="text-xs text-[var(--color-muted)] mt-2">No closed trades in range.</p>}
     </Card>
       </section>
       <section>
         <h2 className="text-sm font-semibold mb-2">Win / Loss Distribution</h2>
-  <Card className="p-4 flex flex-col sm:flex-row gap-4" muted>
+  <Card className="p-4 flex flex-col sm:flex-row gap-4 opacity-75">
           <div className="flex-1 min-w-[200px]"><WinLossDonut wins={distribution?.wins||0} losses={distribution?.losses||0} breakeven={distribution?.breakeven||0} /></div>
           <ul className="text-xs space-y-1">
             <li><span className="text-[var(--color-muted)]">Wins:</span> {distribution?.wins ?? 0}</li>
@@ -182,14 +184,14 @@ export default async function DashboardPage() {
       </section>
       <section>
         <h2 className="text-sm font-semibold mb-2">Daily P/L (Last 60 Days)</h2>
-  <Card className="p-4 overflow-x-auto" muted>
+  <Card className="p-4 overflow-x-auto opacity-75">
           <DailyHeatmap days={daily} />
           {!daily.length && <p className="text-xs text-[var(--color-muted)] mt-2">No closed trades in range.</p>}
     </Card>
       </section>
       <section>
         <h2 className="text-sm font-semibold mb-2">Tag Performance</h2>
-  <Card className="p-4 overflow-x-auto" muted>
+  <Card className="p-4 overflow-x-auto opacity-75">
           <TagPerformanceTable rows={tagPerf} />
           {!tagPerf.length && <p className="text-xs text-[var(--color-muted)] mt-2">No tagged closed trades.</p>}
     </Card>
@@ -206,7 +208,7 @@ function MetricCard({ label, value, tone, tooltip }: { label: string; value: str
     </Tooltip>
   ) : label;
   return (
-    <Card className="p-4 flex flex-col gap-2" muted>
+    <Card className="p-4 flex flex-col gap-2 opacity-75">
       <div className="text-xs uppercase tracking-wide text-[var(--color-muted)]">{LabelEl}</div>
       <div className={`text-2xl font-semibold ${color}`}>{value}</div>
     </Card>

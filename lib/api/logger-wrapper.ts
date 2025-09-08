@@ -30,20 +30,44 @@ export function withLogging<T extends (...args: any[]) => Promise<Response>>(han
     } catch {/* ignore */}
   // Defensive: some test module loading edge cases produced a non-function import; fallback directly to logger.child
   const withContextFn = typeof _withContext === 'function' ? _withContext : ((ctx: { reqId?: string; userId?: string; route?: string }) => logger.child(ctx));
-  const log = withContextFn({ reqId, userId, route });
+  
+  try {
+    const log = withContextFn({ reqId, userId, route });
     log.debug({ method: req.method, url: req.url }, 'request.start');
     try {
-  const res = await withObservabilityScope({ reqId, userId, route }, async () => await handler(...args));
+      const res = await withObservabilityScope({ reqId, userId, route }, async () => await handler(...args));
       const dur = Date.now() - start;
-      log.info({ status: res.status, dur }, 'request.finish');
-  // Ensure correlation header is present on all responses
-  try { res.headers.set('x-request-id', reqId); } catch {/* ignore header set failure */}
-  return res;
+      try {
+        log.info({ status: res.status, dur }, 'request.finish');
+      } catch {
+        // Fallback logging if worker thread fails
+        console.warn(`[${new Date().toISOString()}] ${route} ${res.status} ${dur}ms`);
+      }
+      // Ensure correlation header is present on all responses
+      try { res.headers.set('x-request-id', reqId); } catch {/* ignore header set failure */}
+      return res;
     } catch (e) {
       const dur = Date.now() - start;
-      log.error({ err: (e as Error).message, stack: (e as Error).stack, dur }, 'request.error');
+      try {
+        log.error({ err: (e as Error).message, stack: (e as Error).stack, dur }, 'request.error');
+      } catch {
+        // Fallback logging if worker thread fails
+        console.error(`[${new Date().toISOString()}] ${route} ERROR ${dur}ms:`, (e as Error).message);
+      }
       captureException(e, { reqId, userId, route });
       return new Response(JSON.stringify({ data: null, error: { code: 'INTERNAL', message: 'Internal error' } }), { status: 500, headers: { 'Content-Type': 'application/json', 'x-request-id': reqId } });
     }
+  } catch (workerError) {
+    // Fallback if entire logging system fails
+    console.error(`[${new Date().toISOString()}] Logger worker failed for ${route}:`, workerError);
+    try {
+      const res = await handler(...args);
+      console.warn(`[${new Date().toISOString()}] ${route} ${res.status} (fallback)`);
+      return res;
+    } catch (e) {
+      console.error(`[${new Date().toISOString()}] ${route} ERROR (fallback):`, (e as Error).message);
+      return new Response(JSON.stringify({ data: null, error: { code: 'INTERNAL', message: 'Internal error' } }), { status: 500, headers: { 'Content-Type': 'application/json', 'x-request-id': reqId } });
+    }
+  }
   };
 }

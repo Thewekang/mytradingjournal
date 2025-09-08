@@ -15,7 +15,8 @@ import FormErrorSummary from '@/components/form-error-summary';
 
 interface GoalItem { id: string; type: string; period: string; targetValue: number; currentValue: number; startDate: string; endDate: string; achievedAt: string | null; windowDays: number | null }
 async function fetchGoals(): Promise<GoalItem[]> {
-  const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || ''}/api/goals`, { cache: 'no-store' });
+  const base = process.env.NEXT_PUBLIC_BASE_URL || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3001');
+  const res = await fetch(`${base}/api/goals`, { cache: 'no-store' });
   if (!res.ok) return [];
   const json = await res.json();
   return (json.data || []) as GoalItem[];
@@ -136,31 +137,31 @@ function GoalsClient({ initial }: { initial: GoalItem[] }) {
           </div>
           <div className="flex flex-col">
             <label className="mb-0.5" htmlFor="goal-target">Target</label>
-            <Input id="goal-target" type="number" step="0.01" value={form.targetValue} onChange={e=>setForm(f=>({...f,targetValue:e.target.value}))} invalid={!!formErrors.targetValue} aria-describedby={formErrors.targetValue ? 'goal-target-err':undefined} className="w-28" variant="inset" fieldSize="sm" />
+            <Input id="goal-target" type="number" step="0.01" value={form.targetValue} onChange={e=>setForm(f=>({...f,targetValue:e.target.value}))} aria-invalid={!!formErrors.targetValue} aria-describedby={formErrors.targetValue ? 'goal-target-err':undefined} className="w-28 h-8" />
             {formErrors.targetValue && <span id="goal-target-err" className="text-[10px] text-status-danger">{formErrors.targetValue}</span>}
           </div>
           {form.type === 'ROLLING_WINDOW_PNL' && (
             <div className="flex flex-col">
               <label className="mb-0.5" htmlFor="goal-window">Window (days)</label>
-              <Input id="goal-window" type="number" min={1} max={365} value={(form as Record<string,string>)['windowDays'] || ''} onChange={e=>setForm(f=>({...f, windowDays: e.target.value }))} invalid={!!formErrors['goal-window']} aria-describedby={formErrors['goal-window']? 'goal-window-err':undefined} className="w-24" variant="inset" fieldSize="sm" />
+              <Input id="goal-window" type="number" min={1} max={365} value={(form as Record<string,string>)['windowDays'] || ''} onChange={e=>setForm(f=>({...f, windowDays: e.target.value }))} aria-invalid={!!formErrors['goal-window']} aria-describedby={formErrors['goal-window']? 'goal-window-err':undefined} className="w-24 h-8" />
               {formErrors['goal-window'] && <span id="goal-window-err" className="text-[10px] text-status-danger">{formErrors['goal-window']}</span>}
             </div>
           )}
             <div className="flex flex-col">
               <label className="mb-0.5" htmlFor="goal-start">Start</label>
-              <Input id="goal-start" type="date" value={form.startDate} onChange={e=>setForm(f=>({...f,startDate:e.target.value}))} invalid={!!formErrors.startDate} aria-describedby={formErrors.startDate? 'goal-start-err':undefined} variant="inset" fieldSize="sm" />
+              <Input id="goal-start" type="date" value={form.startDate} onChange={e=>setForm(f=>({...f,startDate:e.target.value}))} aria-invalid={!!formErrors.startDate} aria-describedby={formErrors.startDate? 'goal-start-err':undefined} className="h-8" />
               {formErrors.startDate && <span id="goal-start-err" className="text-[10px] text-status-danger">{formErrors.startDate}</span>}
             </div>
             <div className="flex flex-col">
               <label className="mb-0.5" htmlFor="goal-end">End</label>
-              <Input id="goal-end" type="date" value={form.endDate} onChange={e=>setForm(f=>({...f,endDate:e.target.value}))} invalid={!!formErrors.endDate} aria-describedby={formErrors.endDate? 'goal-end-err':undefined} variant="inset" fieldSize="sm" />
+              <Input id="goal-end" type="date" value={form.endDate} onChange={e=>setForm(f=>({...f,endDate:e.target.value}))} aria-invalid={!!formErrors.endDate} aria-describedby={formErrors.endDate? 'goal-end-err':undefined} className="h-8" />
               {formErrors.endDate && <span id="goal-end-err" className="text-[10px] text-status-danger">{formErrors.endDate}</span>}
             </div>
-          <Button size="sm" variant="solid" loading={loading} disabled={loading}>{loading ? 'Saving...' : 'Add Goal'}</Button>
+          <Button size="sm" disabled={loading}>{loading ? 'Saving...' : 'Add Goal'}</Button>
           {error && <span className="text-status-danger ml-2" role="alert">{error}</span>}
         </form>
       </Card>
-  <Card className="p-3 space-y-2" muted>
+  <Card className="p-3 space-y-2 opacity-75">
         {items.map(g => {
           const pctRaw = g.type === 'AVG_LOSS_CAP'
             ? (g.targetValue > 0 ? Math.min(100, (Math.max(0, g.targetValue - g.currentValue) / g.targetValue) * 100) : 0)
@@ -201,7 +202,7 @@ function GoalsClient({ initial }: { initial: GoalItem[] }) {
           const currentDisplay = formatValue(g.type === 'WIN_RATE' ? g.currentValue : g.currentValue);
           const targetDisplay = formatValue(g.type === 'WIN_RATE' ? g.targetValue : g.targetValue);
           return (
-            <Card key={g.id} className="p-3" muted>
+            <Card key={g.id} className="p-3 opacity-75">
               <div className="flex justify-between text-xs mb-1">
                 <Tooltip content={description}>
                   <span className="text-[var(--color-text)]/80 font-medium cursor-help">{label} ({g.period})</span>
